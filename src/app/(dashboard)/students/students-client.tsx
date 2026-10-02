@@ -16,6 +16,7 @@ import { bulkMoveClass } from "@/app/actions/students";
 import { Search, Users, GraduationCap, ArrowUp, ArrowDown, ArrowUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { ClassListDownloadButton } from "@/components/students/class-list-download";
 
 interface StudentsClientProps {
   students: Student[];
@@ -97,7 +98,7 @@ export function StudentsClient({ students, grades }: StudentsClientProps) {
         </div>
 
         {/* Grade filter pills */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap items-center">
           <FilterPill
             active={activeGrade === "all"}
             onClick={() => setActiveGrade("all")}
@@ -105,13 +106,15 @@ export function StudentsClient({ students, grades }: StudentsClientProps) {
             count={students.length}
           />
           {grades.map((g) => (
-            <FilterPill
-              key={g.id}
-              active={activeGrade === g.id}
-              onClick={() => setActiveGrade(g.id)}
-              label={g.name}
-              count={gradeCount(g.id)}
-            />
+            <div key={g.id} className="flex items-center gap-0.5">
+              <FilterPill
+                active={activeGrade === g.id}
+                onClick={() => setActiveGrade(g.id)}
+                label={g.name}
+                count={gradeCount(g.id)}
+              />
+              <ClassListDownloadButton grade={g} />
+            </div>
           ))}
         </div>
       </div>
