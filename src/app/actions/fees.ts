@@ -11,7 +11,7 @@ export async function getChallans(month?: number, year?: number): Promise<FeeCha
   const supabase = await createClient();
   let query = supabase
     .from("fee_challans")
-    .select("*, student:students(*, grade:grades(*))")
+    .select("*, student:students(*, grade:grades!students_grade_id_fkey(*))")
     .order("created_at", { ascending: false });
 
   if (month) query = query.eq("month", month);
@@ -26,7 +26,7 @@ export async function getStudentChallans(studentId: string): Promise<FeeChallan[
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("fee_challans")
-    .select("*, student:students(*, grade:grades(*))")
+    .select("*, student:students(*, grade:grades!students_grade_id_fkey(*))")
     .eq("student_id", studentId)
     .order("year", { ascending: false })
     .order("month", { ascending: false });
@@ -38,7 +38,7 @@ export async function getChallan(id: string): Promise<FeeChallan | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("fee_challans")
-    .select("*, student:students(*, grade:grades(*))")
+    .select("*, student:students(*, grade:grades!students_grade_id_fkey(*))")
     .eq("id", id)
     .single();
   if (error) return null;
@@ -50,7 +50,7 @@ export async function generateMonthlyFees(month: number, year: number) {
 
   const { data: students, error: studentsError } = await supabase
     .from("students")
-    .select("*, grade:grades(*)")
+    .select("*, grade:grades!students_grade_id_fkey(*)")
     .eq("is_active", true);
   if (studentsError) throw studentsError;
 
