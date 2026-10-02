@@ -239,7 +239,7 @@ export async function getStudentDues(id: string): Promise<StudentDues> {
   return { count: challans.length, total, challans };
 }
 
-async function exitStudent(id: string, status: "expelled" | "withdrawn", reason: string | null) {
+async function exitStudent(id: string, status: "expelled" | "withdrawn", reason: string | null, characterRemarks?: string | null, lastPromotedClassId?: string | null) {
   await requireUser();
   const supabase = await createClient();
 
@@ -251,14 +251,26 @@ async function exitStudent(id: string, status: "expelled" | "withdrawn", reason:
     );
   }
 
+  // Get current grade to use as last_promoted_class if not provided
+  const { data: student } = await supabase
+    .from("students")
+    .select("grade_id")
+    .eq("id", id)
+    .single();
+
+  const updatePayload: Record<string, unknown> = {
+    status,
+    is_active: false,
+    exit_reason: reason?.trim() || null,
+    exit_date: new Date().toISOString().split("T")[0],
+    character_remarks: characterRemarks?.trim() || null,
+    last_promoted_class_id: lastPromotedClassId ?? (student as any)?.grade_id ?? null,
+    certificate_generated_at: new Date().toISOString(),
+  };
+
   const { error } = await supabase
     .from("students")
-    .update({
-      status,
-      is_active: false,
-      exit_reason: reason?.trim() || null,
-      exit_date: new Date().toISOString().split("T")[0],
-    } as never)
+    .update(updatePayload as never)
     .eq("id", id);
   if (error) throw error;
   revalidatePath("/students");
@@ -267,13 +279,13 @@ async function exitStudent(id: string, status: "expelled" | "withdrawn", reason:
   await logAction("Students", status === "expelled" ? "Expelled student" : "Withdrew student", reason ?? undefined);
 }
 
-export async function expelStudent(id: string, reason: string) {
+export async function expelStudent(id: string, reason: string, characterRemarks?: string | null, lastPromotedClassId?: string | null) {
   if (!reason?.trim()) throw new Error("A reason is required to expel a student.");
-  return exitStudent(id, "expelled", reason);
+  return exitStudent(id, "expelled", reason, characterRemarks, lastPromotedClassId);
 }
 
-export async function withdrawStudent(id: string, reason?: string) {
-  return exitStudent(id, "withdrawn", reason ?? null);
+export async function withdrawStudent(id: string, reason?: string, characterRemarks?: string | null, lastPromotedClassId?: string | null) {
+  return exitStudent(id, "withdrawn", reason ?? null, characterRemarks, lastPromotedClassId);
 }
 
 /** Restore an expelled/withdrawn student to active. */

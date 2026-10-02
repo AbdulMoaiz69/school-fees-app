@@ -30,10 +30,15 @@ export type Student = {
   date_of_birth: string | null;
   previous_school: string | null;
   custom_discount_pkr: number;
+  character_remarks: string | null;
+  last_promoted_class_id: string | null;
+  certificate_generated_at: string | null;
+  certificate_generated_by: string | null;
   created_at: string;
   updated_at: string;
   // joined
   grade?: Grade;
+  last_promoted_class?: Grade;
 };
 
 export type FeeChallan = {

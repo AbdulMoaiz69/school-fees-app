@@ -14,6 +14,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   promoteStudent, demoteStudent, retainStudent,
   expelStudent, withdrawStudent, reinstateStudent,
 } from "@/app/actions/students";
@@ -26,6 +29,7 @@ import {
 import {
   Receipt, Phone, MapPin, User, Calendar, GraduationCap, Cake, School,
   ArrowUp, ArrowDown, RotateCw, UserX, LogOut, Undo2, Loader2, AlertTriangle, Settings2, ShieldCheck,
+  FileText, Award,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -54,6 +58,11 @@ export function StudentDetailClient({ student, challans, grades }: StudentDetail
   const [isPending, startTransition] = useTransition();
   const [exitDialog, setExitDialog] = useState<null | "expel" | "withdraw">(null);
   const [reason, setReason] = useState("");
+  const [characterRemarks, setCharacterRemarks] = useState("");
+  const [lastPromotedClassId, setLastPromotedClassId] = useState<string>("");
+
+  // Get previous grades (excluding current grade) for last promoted class dropdown
+  const previousGrades = grades.filter((g) => g.id !== student.grade_id);
 
   const scholarship = SCHOLARSHIP_MAP[student.scholarship_type];
   // Default to "active" so the page works before the lifecycle DB migration is applied.
@@ -244,7 +253,7 @@ export function StudentDetailClient({ student, challans, grades }: StudentDetail
                   </div>
                 </>
               ) : (
-                /* Inactive: show exit details + reinstate */
+                /* Inactive: show exit details + reinstate + certificate */
                 <div className="space-y-3">
                   <div className="rounded-lg border bg-muted/40 p-3 space-y-1.5">
                     <p className="text-sm font-medium">
@@ -260,15 +269,33 @@ export function StudentDetailClient({ student, challans, grades }: StudentDetail
                         <span className="font-medium text-foreground">Reason: </span>{student.exit_reason}
                       </p>
                     )}
+                    {student.character_remarks && (
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">Character: </span>{student.character_remarks}
+                      </p>
+                    )}
+                    {student.last_promoted_class && (
+                      <p className="text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">Last Promoted Class: </span>{student.last_promoted_class.name}
+                      </p>
+                    )}
                   </div>
-                  <Button
-                    variant="outline" size="sm" className="w-full justify-center"
-                    disabled={isPending}
-                    onClick={() => run(() => reinstateStudent(student.id), "Student reinstated")}
-                  >
-                    {isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Undo2 className="h-4 w-4 mr-2" />}
-                    Reinstate Student
-                  </Button>
+                  <div className="flex gap-2">
+                    <Link href={`/students/${student.id}/certificate`}>
+                      <Button variant="default" size="sm" className="flex-1 justify-center">
+                        <FileText className="h-4 w-4 mr-2" />
+                        View {student.status === "expelled" ? "Expulsion" : "Withdrawal"} Certificate
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="outline" size="sm" className="w-full justify-center"
+                      disabled={isPending}
+                      onClick={() => run(() => reinstateStudent(student.id), "Student reinstated")}
+                    >
+                      {isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Undo2 className="h-4 w-4 mr-2" />}
+                      Reinstate Student
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -317,32 +344,7 @@ export function StudentDetailClient({ student, challans, grades }: StudentDetail
               <p className="text-xs text-muted-foreground">{student.registration_number} · {student.grade?.name ?? "No Class"}</p>
             </div>
 
-            {hasDues ? (
-              /* Blocked: outstanding dues */
-              <div className="space-y-3">
-                <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">
-                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold">Dues not cleared</p>
-                    <p className="text-xs mt-0.5">
-                      This student has {unpaid.length} unpaid challan{unpaid.length !== 1 ? "s" : ""} totaling{" "}
-                      <span className="font-semibold">{formatCurrency(duesTotal)}</span>. Clear all dues before {exitDialog === "expel" ? "expelling" : "withdrawing"}.
-                    </p>
-                  </div>
-                </div>
-                <div className="border rounded-lg divide-y max-h-44 overflow-y-auto">
-                  {unpaid.map((c) => (
-                    <Link key={c.id} href={`/fees/${c.id}`} className="flex items-center justify-between px-3 py-2 text-sm hover:bg-muted/40">
-                      <span>{getMonthName(c.month)} {c.year}</span>
-                      <span className="flex items-center gap-2">
-                        <span className="text-xs text-amber-700">{getStatusLabel(getChallanStatus(c))}</span>
-                        <span className="font-medium">{formatCurrency(c.total)}</span>
-                      </span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ) : (
+            {!hasDues && (
               /* Allowed: capture reason (+ security refund notice) */
               <div className="space-y-3">
                 {student.security_fee > 0 && (
@@ -368,20 +370,50 @@ export function StudentDetailClient({ student, challans, grades }: StudentDetail
                     onChange={(e) => setReason(e.target.value)}
                   />
                 </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="character_remarks">Character Remarks</Label>
+                  <Textarea
+                    id="character_remarks"
+                    rows={2}
+                    placeholder="e.g. Good conduct, satisfactory performance / Poor attendance, disciplinary issues"
+                    value={characterRemarks}
+                    onChange={(e) => setCharacterRemarks(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="last_promoted_class">Last Promoted Class</Label>
+                  <Select value={lastPromotedClassId} onValueChange={(v) => setLastPromotedClassId(v ?? "")}>
+                    <SelectTrigger id="last_promoted_class">
+                      <SelectValue placeholder="Select last promoted class (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {previousGrades.length === 0 ? (
+                        <SelectItem value="" disabled>No previous classes available</SelectItem>
+                      ) : (
+                        previousGrades.map((g) => (
+                          <SelectItem key={g.id} value={g.id}>
+                            {g.name}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">The class the student was in before the current one (for certificate)</p>
+                </div>
               </div>
             )}
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setExitDialog(null)}>Cancel</Button>
+            <Button variant="outline" onClick={() => { setExitDialog(null); setReason(""); setCharacterRemarks(""); setLastPromotedClassId(""); }}>Cancel</Button>
             {!hasDues && (
               <Button
                 variant={exitDialog === "expel" ? "destructive" : "default"}
                 disabled={isPending || (exitDialog === "expel" && !reason.trim())}
                 onClick={() =>
                   exitDialog === "expel"
-                    ? run(() => expelStudent(student.id, reason), "Student expelled")
-                    : run(() => withdrawStudent(student.id, reason || undefined), "Student withdrawn")
+                    ? run(() => expelStudent(student.id, reason, characterRemarks || undefined, lastPromotedClassId || undefined), "Student expelled")
+                    : run(() => withdrawStudent(student.id, reason || undefined, characterRemarks || undefined, lastPromotedClassId || undefined), "Student withdrawn")
                 }
               >
                 {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
