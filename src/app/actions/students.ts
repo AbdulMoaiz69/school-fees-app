@@ -11,7 +11,7 @@ export async function getStudents(gradeId?: string): Promise<Student[]> {
   const supabase = await createClient();
   let query = supabase
     .from("students")
-    .select("*, grade:grades(*), last_promoted_class:grades!last_promoted_class_id(*)")
+    .select("*, grade:grades(*)")
     .eq("is_active", true)
     .order("full_name", { ascending: true });
 
@@ -26,7 +26,7 @@ export async function getStudent(id: string): Promise<Student | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("students")
-    .select("*, grade:grades(*), last_promoted_class:grades!last_promoted_class_id(*)")
+    .select("*, grade:grades(*)")
     .eq("id", id)
     .single();
   if (error) return null;
@@ -37,7 +37,7 @@ export async function searchStudents(query: string): Promise<Student[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("students")
-    .select("*, grade:grades(*), last_promoted_class:grades!last_promoted_class_id(*)")
+    .select("*, grade:grades(*)")
     .eq("is_active", true)
     .or(`full_name.ilike.%${query}%,registration_number.ilike.%${query}%`)
     .order("full_name", { ascending: true })

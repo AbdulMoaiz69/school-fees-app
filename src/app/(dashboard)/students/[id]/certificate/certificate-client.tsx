@@ -11,9 +11,10 @@ import type { Student, Grade } from "@/lib/supabase/types";
 interface CertificateClientProps {
   student: Student;
   settings: Record<string, string>;
+  lastPromotedClass: { name: string } | null;
 }
 
-export function CertificateClient({ student, settings }: CertificateClientProps) {
+export function CertificateClient({ student, settings, lastPromotedClass }: CertificateClientProps) {
   const [isPrinting, setIsPrinting] = useState(false);
 
   const schoolName = settings.school_name ?? "School Name";
@@ -21,7 +22,7 @@ export function CertificateClient({ student, settings }: CertificateClientProps)
   const schoolPhone = settings.school_phone ?? "";
 
   const currentClass = student.grade?.name ?? "Not Assigned";
-  const lastPromotedClass = student.last_promoted_class?.name ?? "N/A";
+  const lastPromotedClassName = lastPromotedClass?.name ?? "N/A";
   const exitType = student.status === "expelled" ? "Expulsion" : "Withdrawal";
   const exitDate = student.exit_date ? new Date(student.exit_date).toLocaleDateString("en-PK", {
     day: "numeric",
@@ -98,7 +99,7 @@ export function CertificateClient({ student, settings }: CertificateClientProps)
             </div>
             <div>
               <p><strong>Current Class:</strong> {currentClass}</p>
-              <p><strong>Last Promoted Class:</strong> {lastPromotedClass}</p>
+              <p><strong>Last Promoted Class:</strong> {lastPromotedClassName}</p>
             </div>
           </div>
 

@@ -16,6 +16,17 @@ export async function getGrades(): Promise<Grade[]> {
   return (data ?? []) as unknown as Grade[];
 }
 
+export async function getGrade(id: string): Promise<Grade | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("grades")
+    .select("*")
+    .eq("id", id)
+    .single();
+  if (error) return null;
+  return data as unknown as Grade;
+}
+
 export async function createGrade(values: {
   name: string;
   monthly_fee: number;
