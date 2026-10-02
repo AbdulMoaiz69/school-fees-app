@@ -58,11 +58,12 @@ export async function generateMonthlyFees(month: number, year: number) {
 
   const challans = ((students ?? []) as unknown as {
     id: string;
-    scholarship_type: "none" | "half" | "full";
+    scholarship_type: "none" | "half" | "full" | "sibling" | "custom";
+    custom_discount_pkr: number;
     grade: { monthly_fee: number } | null;
   }[]).map((student) => {
     const tuitionFee = student.grade?.monthly_fee ?? 0;
-    const discount = computeDiscount(tuitionFee, student.scholarship_type);
+    const discount = computeDiscount(tuitionFee, student.scholarship_type, student.custom_discount_pkr ?? 0);
 
     const challan = {
       student_id: student.id,
@@ -106,11 +107,12 @@ export async function createChallan(values: {
   admission_fee: number;
   mcs_fee: number;
   arrears?: number;
-  scholarship_type: "none" | "half" | "full";
+  scholarship_type: "none" | "half" | "full" | "sibling" | "custom";
+  custom_discount_pkr?: number;
 }) {
   const supabase = await createClient();
   const dueDate = getDueDate(values.month, values.year);
-  const discount = computeDiscount(values.tuition_fee, values.scholarship_type);
+  const discount = computeDiscount(values.tuition_fee, values.scholarship_type, values.custom_discount_pkr ?? 0);
 
   const challan = {
     ...values,
@@ -227,6 +229,8 @@ export async function getDashboardStats(month: number, year: number) {
   const totalExpected = challans.reduce((sum, c) => sum + (c.total ?? 0), 0);
   const fullScholarships = scholarships.filter((s) => s.scholarship_type === "full").length;
   const halfScholarships = scholarships.filter((s) => s.scholarship_type === "half").length;
+  const customScholarships = scholarships.filter((s) => s.scholarship_type === "custom").length;
+  const siblingScholarships = scholarships.filter((s) => s.scholarship_type === "sibling").length;
 
   return {
     totalStudents,
@@ -237,5 +241,7 @@ export async function getDashboardStats(month: number, year: number) {
     totalExpected,
     fullScholarships,
     halfScholarships,
+    customScholarships,
+    siblingScholarships,
   };
 }

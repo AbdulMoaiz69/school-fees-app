@@ -28,6 +28,7 @@ const SCHOLARSHIP_BADGE = {
   half: { label: "Half Scholar", cls: "bg-blue-50 text-blue-700 border-blue-200" },
   full: { label: "Full Scholar", cls: "bg-purple-50 text-purple-700 border-purple-200" },
   sibling: { label: "Sibling 20%", cls: "bg-teal-50 text-teal-700 border-teal-200" },
+  custom: { label: "Custom Disc.", cls: "bg-amber-50 text-amber-700 border-amber-200" },
 };
 
 export function StudentsClient({ students, grades }: StudentsClientProps) {
