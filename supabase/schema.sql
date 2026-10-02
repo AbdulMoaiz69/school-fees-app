@@ -56,6 +56,8 @@ create table if not exists students (
   -- Refundable security deposit collected at admission (held in security treasury)
   security_fee numeric(12,2) not null default 0,
   admission_date date,
+  date_of_birth date,
+  previous_school text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

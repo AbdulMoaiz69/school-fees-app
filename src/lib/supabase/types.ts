@@ -27,6 +27,8 @@ export type Student = {
   exit_date: string | null;
   security_fee: number;
   admission_date: string | null;
+  date_of_birth: string | null;
+  previous_school: string | null;
   created_at: string;
   updated_at: string;
   // joined

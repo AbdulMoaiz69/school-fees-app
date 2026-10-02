@@ -54,6 +54,8 @@ export async function createStudent(values: {
   address?: string;
   scholarship_type: "none" | "half" | "full" | "sibling";
   admission_date?: string;
+  date_of_birth?: string;
+  previous_school?: string;
   security_fee?: number;
   sibling_id?: string | null;
 }) {
@@ -66,9 +68,17 @@ export async function createStudent(values: {
   );
   const registration_number = generateRegistrationNumber(existingNumbers);
 
+  const payload: Record<string, unknown> = {
+    ...values,
+    admission_date: values.admission_date?.trim() || null,
+    date_of_birth: values.date_of_birth?.trim() || null,
+    previous_school: values.previous_school?.trim() || null,
+    registration_number,
+  };
+
   const { data, error } = await supabase
     .from("students")
-    .insert({ ...values, registration_number } as never)
+    .insert(payload as never)
     .select()
     .single();
   if (error) throw error;
@@ -88,17 +98,33 @@ export async function updateStudent(
     address: string;
     scholarship_type: "none" | "half" | "full" | "sibling";
     admission_date: string;
+    date_of_birth: string | null;
+    previous_school: string | null;
     is_active: boolean;
     security_fee: number;
     sibling_id: string | null;
   }>
 ) {
   const supabase = await createClient();
-  const { error } = await supabase.from("students").update(values as never).eq("id", id);
+  const payload: Record<string, unknown> = { ...values };
+  if ("date_of_birth" in values) {
+    payload.date_of_birth = values.date_of_birth?.trim() || null;
+  }
+  if ("previous_school" in values) {
+    payload.previous_school = values.previous_school?.trim() || null;
+  }
+  if ("admission_date" in values) {
+    payload.admission_date = values.admission_date?.trim() || null;
+  }
+
+  const { error } = await supabase.from("students").update(payload as never).eq("id", id);
   if (error) throw error;
   revalidatePath("/students");
   revalidatePath(`/students/${id}`);
   revalidatePath("/dashboard");
+  if (values.full_name) {
+    await logAction("Students", "Updated student", values.full_name);
+  }
 }
 
 export async function deleteStudent(id: string) {

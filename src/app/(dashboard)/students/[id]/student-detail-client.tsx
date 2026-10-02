@@ -24,7 +24,7 @@ import {
   getStatusLabel,
 } from "@/lib/fee-utils";
 import {
-  Receipt, Phone, MapPin, User, Calendar, GraduationCap,
+  Receipt, Phone, MapPin, User, Calendar, GraduationCap, Cake, School,
   ArrowUp, ArrowDown, RotateCw, UserX, LogOut, Undo2, Loader2, AlertTriangle, Settings2, ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -130,6 +130,24 @@ export function StudentDetailClient({ student, challans, grades }: StudentDetail
                 label="Security Deposit"
                 value={student.security_fee > 0 ? formatCurrency(student.security_fee) : "None"}
               />
+              {student.date_of_birth && (
+                <InfoRow
+                  icon={Cake}
+                  label="Date of Birth"
+                  value={new Date(student.date_of_birth).toLocaleDateString("en-PK", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                />
+              )}
+              {student.previous_school && (
+                <InfoRow
+                  icon={School}
+                  label="Previous School"
+                  value={student.previous_school}
+                />
+              )}
               {student.parent_name && (
                 <InfoRow icon={User} label="Parent" value={student.parent_name} />
               )}

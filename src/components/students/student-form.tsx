@@ -37,6 +37,8 @@ export function StudentForm({ grades, student, siblingName }: StudentFormProps) 
     address: student?.address ?? "",
     scholarship_type: student?.scholarship_type ?? "none",
     admission_date: student?.admission_date ?? "",
+    date_of_birth: student?.date_of_birth ?? "",
+    previous_school: student?.previous_school ?? "",
     security_fee: student?.security_fee != null ? String(student.security_fee) : "",
   });
 
@@ -94,6 +96,8 @@ export function StudentForm({ grades, student, siblingName }: StudentFormProps) 
       if (student) {
         await updateStudent(student.id, {
           ...form,
+          date_of_birth: form.date_of_birth || null,
+          previous_school: form.previous_school.trim() || null,
           scholarship_type: scholarshipType,
           admission_date: form.admission_date || undefined,
           security_fee: parseFloat(form.security_fee) || 0,
@@ -104,6 +108,8 @@ export function StudentForm({ grades, student, siblingName }: StudentFormProps) 
       } else {
         const s = await createStudent({
           ...form,
+          date_of_birth: form.date_of_birth || undefined,
+          previous_school: form.previous_school.trim() || undefined,
           scholarship_type: scholarshipType,
           admission_date: form.admission_date || undefined,
           security_fee: parseFloat(form.security_fee) || 0,
@@ -170,6 +176,28 @@ export function StudentForm({ grades, student, siblingName }: StudentFormProps) 
                 type="date"
                 value={form.admission_date}
                 onChange={(e) => set("admission_date", e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="date_of_birth">Date of Birth</Label>
+              <Input
+                id="date_of_birth"
+                type="date"
+                value={form.date_of_birth}
+                onChange={(e) => set("date_of_birth", e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="previous_school">Previous School</Label>
+              <Input
+                id="previous_school"
+                placeholder="e.g. Army Public School (optional)"
+                value={form.previous_school}
+                onChange={(e) => set("previous_school", e.target.value)}
               />
             </div>
           </div>
