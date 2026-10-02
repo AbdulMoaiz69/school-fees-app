@@ -40,6 +40,7 @@ export function StudentForm({ grades, student, siblingName }: StudentFormProps) 
     date_of_birth: student?.date_of_birth ?? "",
     previous_school: student?.previous_school ?? "",
     security_fee: student?.security_fee != null ? String(student.security_fee) : "",
+    custom_discount_pkr: student?.custom_discount_pkr != null ? String(student.custom_discount_pkr) : "",
   });
 
   // Sibling discount: link to an already-enrolled student
@@ -80,7 +81,8 @@ export function StudentForm({ grades, student, siblingName }: StudentFormProps) 
   const selectedGrade = grades.find((g) => g.id === form.grade_id);
   const baseFee = selectedGrade?.monthly_fee ?? 0;
   const scholarshipType = form.scholarship_type as ScholarshipType;
-  const discount = computeDiscount(baseFee, scholarshipType);
+  const customDiscountPkr = parseFloat(form.custom_discount_pkr) || 0;
+  const discount = computeDiscount(baseFee, scholarshipType, customDiscountPkr);
   const effectiveFee = baseFee - discount;
 
   async function handleSubmit(e: { preventDefault(): void }) {
@@ -102,6 +104,7 @@ export function StudentForm({ grades, student, siblingName }: StudentFormProps) 
           admission_date: form.admission_date || undefined,
           security_fee: parseFloat(form.security_fee) || 0,
           sibling_id,
+          custom_discount_pkr: scholarshipType === "custom" ? customDiscountPkr : 0,
         });
         toast.success("Student updated");
         router.push(`/students/${student.id}`);
@@ -114,6 +117,7 @@ export function StudentForm({ grades, student, siblingName }: StudentFormProps) 
           admission_date: form.admission_date || undefined,
           security_fee: parseFloat(form.security_fee) || 0,
           sibling_id,
+          custom_discount_pkr: scholarshipType === "custom" ? customDiscountPkr : 0,
         });
         toast.success("Student added successfully");
         router.push(`/students/${s.id}`);
@@ -216,6 +220,7 @@ export function StudentForm({ grades, student, siblingName }: StudentFormProps) 
                 <SelectItem value="half">Half Scholarship — 50% off tuition</SelectItem>
                 <SelectItem value="full">Full Scholarship — 100% waiver</SelectItem>
                 <SelectItem value="sibling">Sibling Discount — 20% off tuition</SelectItem>
+                <SelectItem value="custom">Custom Discount — fixed PKR amount</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -267,6 +272,34 @@ export function StudentForm({ grades, student, siblingName }: StudentFormProps) 
                     <p className="text-xs text-muted-foreground mt-1.5">No enrolled students match &ldquo;{siblingQuery}&rdquo;.</p>
                   )}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* Custom PKR discount input */}
+          {scholarshipType === "custom" && (
+            <div className="space-y-1.5">
+              <Label htmlFor="custom_discount_pkr">
+                Discount Amount (PKR) <span className="text-destructive">*</span>
+                <span className="text-muted-foreground text-xs ml-1">(deducted from monthly fee)</span>
+              </Label>
+              <Input
+                id="custom_discount_pkr"
+                type="number"
+                min="0"
+                step="1"
+                placeholder="e.g. 500"
+                value={form.custom_discount_pkr}
+                onChange={(e) => set("custom_discount_pkr", e.target.value)}
+              />
+              {baseFee > 0 && customDiscountPkr > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Discount of{" "}
+                  <span className="font-medium text-foreground">
+                    Rs {Math.min(customDiscountPkr, baseFee).toLocaleString("en-PK")}
+                  </span>{" "}
+                  will be applied each month.
+                </p>
               )}
             </div>
           )}

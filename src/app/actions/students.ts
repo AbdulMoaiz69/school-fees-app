@@ -52,12 +52,13 @@ export async function createStudent(values: {
   parent_name?: string;
   parent_phone?: string;
   address?: string;
-  scholarship_type: "none" | "half" | "full" | "sibling";
+  scholarship_type: "none" | "half" | "full" | "sibling" | "custom";
   admission_date?: string;
   date_of_birth?: string;
   previous_school?: string;
   security_fee?: number;
   sibling_id?: string | null;
+  custom_discount_pkr?: number;
 }) {
   const supabase = await createClient();
   const { data: existing } = await supabase
@@ -96,13 +97,14 @@ export async function updateStudent(
     parent_name: string;
     parent_phone: string;
     address: string;
-    scholarship_type: "none" | "half" | "full" | "sibling";
+    scholarship_type: "none" | "half" | "full" | "sibling" | "custom";
     admission_date: string;
     date_of_birth: string | null;
     previous_school: string | null;
     is_active: boolean;
     security_fee: number;
     sibling_id: string | null;
+    custom_discount_pkr: number;
   }>
 ) {
   const supabase = await createClient();

@@ -1,4 +1,4 @@
-export type ScholarshipType = "none" | "half" | "full" | "sibling";
+export type ScholarshipType = "none" | "half" | "full" | "sibling" | "custom";
 
 export type StudentStatus = "active" | "expelled" | "withdrawn";
 
@@ -29,6 +29,7 @@ export type Student = {
   admission_date: string | null;
   date_of_birth: string | null;
   previous_school: string | null;
+  custom_discount_pkr: number;
   created_at: string;
   updated_at: string;
   // joined
