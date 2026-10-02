@@ -74,6 +74,12 @@ export async function createStudent(values: {
     admission_date: values.admission_date?.trim() || null,
     date_of_birth: values.date_of_birth?.trim() || null,
     previous_school: values.previous_school?.trim() || null,
+    sibling_id: values.sibling_id ?? null,
+    custom_discount_pkr: values.custom_discount_pkr ?? 0,
+    character_remarks: null,
+    last_promoted_class_id: null,
+    certificate_generated_at: null,
+    certificate_generated_by: null,
     registration_number,
   };
 
@@ -82,7 +88,10 @@ export async function createStudent(values: {
     .insert(payload as never)
     .select()
     .single();
-  if (error) throw error;
+  if (error) {
+    console.error("Create student error:", error);
+    throw error;
+  }
   revalidatePath("/students");
   revalidatePath("/dashboard");
   await logAction("Students", "Added student", `${values.full_name} (${registration_number})`);
