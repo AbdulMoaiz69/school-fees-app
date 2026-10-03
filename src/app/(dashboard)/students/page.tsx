@@ -1,5 +1,6 @@
 import { Header } from "@/components/layout/header";
 import { getStudents } from "@/app/actions/students";
+import { getInactiveStudents } from "@/app/actions/students";
 import { getGrades } from "@/app/actions/grades";
 import { StudentsClient } from "./students-client";
 import { buttonVariants } from "@/components/ui/button";
@@ -8,7 +9,11 @@ import { UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default async function StudentsPage() {
-  const [students, grades] = await Promise.all([getStudents(), getGrades()]);
+  const [students, inactiveStudents, grades] = await Promise.all([
+    getStudents(),
+    getInactiveStudents(),
+    getGrades(),
+  ]);
 
   return (
     <div>
@@ -18,7 +23,11 @@ export default async function StudentsPage() {
           Add Student
         </Link>
       </Header>
-      <StudentsClient students={students} grades={grades} />
+      <StudentsClient 
+        activeStudents={students} 
+        inactiveStudents={inactiveStudents} 
+        grades={grades} 
+      />
     </div>
   );
 }

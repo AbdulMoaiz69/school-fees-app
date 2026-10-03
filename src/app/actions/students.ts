@@ -23,6 +23,24 @@ export async function getStudents(gradeId?: string): Promise<Student[]> {
   return (data ?? []) as unknown as Student[];
 }
 
+export async function getInactiveStudents(search?: string): Promise<Student[]> {
+  const supabase = await createClient();
+  let query = supabase
+    .from("students")
+    .select("*, grade:grades!students_grade_id_fkey(*)")
+    .eq("is_active", false)
+    .order("exit_date", { ascending: false })
+    .order("full_name", { ascending: true });
+
+  if (search) {
+    query = query.or(`full_name.ilike.%${search}%,registration_number.ilike.%${search}%`);
+  }
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []) as unknown as Student[];
+}
+
 export async function getStudent(id: string): Promise<Student | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
