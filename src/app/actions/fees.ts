@@ -249,3 +249,75 @@ export async function getDashboardStats(month: number, year: number) {
     siblingScholarships,
   };
 }
+
+// Apply late fees to overdue challans
+export async function applyLateFees(): Promise<{ updated: number; lateFeeAmount: number }> {
+  await requireUser();
+  const admin = createAdminClient();
+
+  // Get late fee amount from settings
+  const { data: setting } = await admin
+    .from("settings")
+    .select("value")
+    .eq("key", "late_fee_amount")
+    .maybeSingle();
+  
+  const lateFeeAmount = Number(setting?.value ?? 200);
+
+  // Get current date
+  const today = new Date();
+  const currentMonth = today.getMonth() + 1;
+  const currentYear = today.getFullYear();
+
+  // Find unpaid challans past the late fee deadline (15th of the month)
+  // Late fee applies after the 15th, for current and previous months
+  const { data: overdueChallans, error } = await admin
+    .from("fee_challans")
+    .select("id, month, year, late_fee, total, tuition_fee, stationary_fee, security_fee, admission_fee, mcs_fee, arrears, discount")
+    .eq("is_paid", false)
+    .lt("late_fee", lateFeeAmount) // Only those without full late fee applied
+    .or(`year.lt.${currentYear},and(year.eq.${currentYear},month.lt.${currentMonth})`);
+
+  if (error) throw error;
+
+  let updated = 0;
+  
+  for (const challan of (overdueChallans ?? [])) {
+    // Check if this challan is past the late fee deadline (15th of its month)
+    const lateFeeDeadline = new Date(challan.year, challan.month - 1, 15);
+    if (today <= lateFeeDeadline) continue; // Not yet past deadline
+
+    const newLateFee = lateFeeAmount;
+    const newTotal = 
+      (challan.tuition_fee ?? 0) +
+      (challan.stationary_fee ?? 0) +
+      (challan.security_fee ?? 0) +
+      (challan.admission_fee ?? 0) +
+      (challan.mcs_fee ?? 0) +
+      newLateFee +
+      (challan.arrears ?? 0) -
+      (challan.discount ?? 0);
+
+    const { error: updateError } = await admin
+      .from("fee_challans")
+      .update({ 
+        late_fee: newLateFee,
+        total: Math.max(0, newTotal)
+      } as never)
+      .eq("id", challan.id);
+
+    if (updateError) {
+      console.error(`Failed to update challan ${challan.id}:`, updateError);
+      continue;
+    }
+    updated++;
+  }
+
+  if (updated > 0) {
+    revalidatePath("/fees");
+    revalidatePath("/dashboard");
+    await logAction("Fees", "Applied late fees", `Applied Rs ${lateFeeAmount} to ${updated} challan(s)`);
+  }
+
+  return { updated, lateFeeAmount };
+}
