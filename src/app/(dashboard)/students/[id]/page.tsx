@@ -3,6 +3,7 @@ import { Header } from "@/components/layout/header";
 import { getStudent } from "@/app/actions/students";
 import { getStudentChallans } from "@/app/actions/fees";
 import { getGrades } from "@/app/actions/grades";
+import { getSiblings } from "@/app/actions/students";
 import { StudentDetailClient } from "./student-detail-client";
 import { buttonVariants } from "@/components/ui/button";
 import Link from "next/link";
@@ -15,10 +16,11 @@ export default async function StudentDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [student, challans, grades] = await Promise.all([
+  const [student, challans, grades, siblings] = await Promise.all([
     getStudent(id),
     getStudentChallans(id),
     getGrades(),
+    getSiblings(id),
   ]);
 
   if (!student) notFound();
@@ -37,7 +39,7 @@ export default async function StudentDetailPage({
           Edit
         </Link>
       </Header>
-      <StudentDetailClient student={student} challans={challans} grades={grades} />
+      <StudentDetailClient student={student} challans={challans} grades={grades} siblings={siblings} />
     </div>
   );
 }

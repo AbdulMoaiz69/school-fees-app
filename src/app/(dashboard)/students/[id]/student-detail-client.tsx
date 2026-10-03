@@ -51,9 +51,10 @@ interface StudentDetailClientProps {
   student: Student;
   challans: FeeChallan[];
   grades: Grade[];
+  siblings: Student[];
 }
 
-export function StudentDetailClient({ student, challans, grades }: StudentDetailClientProps) {
+export function StudentDetailClient({ student, challans, grades, siblings }: StudentDetailClientProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [exitDialog, setExitDialog] = useState<null | "expel" | "withdraw">(null);
@@ -178,6 +179,45 @@ export function StudentDetailClient({ student, challans, grades }: StudentDetail
                   })}
                 />
               )}
+
+              {/* Siblings section */}
+              {(student.scholarship_type === "sibling" || siblings.length > 0) && (
+                <div className="space-y-2 pt-2 border-t">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    {siblings.length === 1 ? "Sibling" : "Siblings"} ({siblings.length})
+                  </p>
+                  <div className="space-y-2">
+                    {siblings.map((sibling) => (
+                      <Link
+                        key={sibling.id}
+                        href={`/students/${sibling.id}`}
+                        className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center shrink-0 text-primary font-semibold text-sm">
+                          {sibling.full_name
+                            .split(" ")
+                            .slice(0, 2)
+                            .map((n) => n[0])
+                            .join("")
+                            .toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm truncate">{sibling.full_name}</p>
+                          <p className="text-xs font-mono text-muted-foreground">{sibling.registration_number}</p>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <GraduationCap className="h-3.5 w-3.5" />
+                          <span>{sibling.grade?.name ?? "No Class"}</span>
+                        </div>
+                        <Badge variant={sibling.scholarship_type === "sibling" ? "outline" : "secondary"}>
+                          {sibling.scholarship_type === "sibling" ? "Sibling Discount" : sibling.scholarship_type}
+                        </Badge>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             </CardContent>
           </Card>
 

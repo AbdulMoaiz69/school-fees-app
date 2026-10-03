@@ -52,6 +52,30 @@ export async function getStudent(id: string): Promise<Student | null> {
   return data as unknown as Student;
 }
 
+export async function getSiblings(studentId: string): Promise<Student[]> {
+  const supabase = await createClient();
+  
+  // First get the student to find their sibling_id
+  const { data: student } = await supabase
+    .from("students")
+    .select("sibling_id")
+    .eq("id", studentId)
+    .single();
+  
+  if (!student?.sibling_id) return [];
+  
+  // Find all students who share the same sibling_id OR have this student as their sibling_id
+  const { data, error } = await supabase
+    .from("students")
+    .select("*, grade:grades!students_grade_id_fkey(*)")
+    .or(`sibling_id.eq.${student.sibling_id},id.eq.${student.sibling_id}`)
+    .neq("id", studentId) // Exclude the current student
+    .order("full_name", { ascending: true });
+  
+  if (error) throw error;
+  return (data ?? []) as unknown as Student[];
+}
+
 export async function searchStudents(query: string): Promise<Student[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
