@@ -73,7 +73,7 @@ export async function getFinanceAnalytics(year: number): Promise<FinanceAnalytic
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("fee_challans")
-    .select("*, student:students(grade:grades(id, name, display_order))")
+    .select("*, student:students(grade:grades!students_grade_id_fkey(id, name, display_order))")
     .eq("year", year);
   if (error) throw error;
 
