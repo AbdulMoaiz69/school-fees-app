@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const supabase = await createClient();
   let query = supabase
     .from("fee_challans")
-    .select("*, student:students(*, grade:grades(*))")
+    .select("*, student:students(*, grade:grades!students_grade_id_fkey(*))")
     .order("created_at", { ascending: false });
 
   if (month) query = query.eq("month", parseInt(month));

@@ -11,7 +11,7 @@ export async function GET(
   // Fetch students for the grade
   const { data: students, error: sErr } = await supabase
     .from("students")
-    .select("*, grade:grades(*)")
+    .select("*, grade:grades!students_grade_id_fkey(*)")
     .eq("grade_id", gradeId)
     .eq("is_active", true)
     .order("full_name", { ascending: true });
