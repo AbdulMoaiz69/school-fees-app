@@ -1,6 +1,6 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { FeeChallan } from "@/lib/supabase/types";
 import { MONTHS } from "@/lib/fee-utils";
 
@@ -70,8 +70,8 @@ function accumulate(point: PeriodPoint, c: FeeChallan) {
 }
 
 export async function getFinanceAnalytics(year: number): Promise<FinanceAnalytics> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
+  const admin = createAdminClient();
+  const { data, error } = await admin
     .from("fee_challans")
     .select("*, student:students(grade:grades(id, name, display_order))")
     .eq("year", year);
@@ -83,7 +83,7 @@ export async function getFinanceAnalytics(year: number): Promise<FinanceAnalytic
   const yearStart = `${year}-01-01`;
   const yearEnd = `${year + 1}-01-01`;
   // Resilient: if the expenses table doesn't exist yet (migration not run), treat as no expenses.
-  const { data: expenseRows } = await supabase
+  const { data: expenseRows } = await admin
     .from("expenses")
     .select("amount, expense_date, category:expense_categories(name)")
     .eq("status", "approved")
@@ -96,7 +96,7 @@ export async function getFinanceAnalytics(year: number): Promise<FinanceAnalytic
   }[];
 
   // Security deposit treasury — held for currently active students (resilient if column missing)
-  const { data: secRows } = await supabase
+  const { data: secRows } = await admin
     .from("students")
     .select("security_fee")
     .eq("is_active", true);
