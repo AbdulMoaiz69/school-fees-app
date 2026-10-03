@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { hashPin, requireAdmin } from "@/lib/auth";
 import { logAction } from "@/app/actions/audit";
@@ -24,8 +25,8 @@ export async function createUser(values: { name: string; username: string; role:
   if (!/^[a-zA-Z0-9_.-]{3,}$/.test(values.username.trim())) throw new Error("Username must be at least 3 characters (letters, numbers, . _ -).");
   if (!/^\d{4,}$/.test(values.pin)) throw new Error("PIN must be at least 4 digits.");
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("app_users").insert({
+  const admin = createAdminClient();
+  const { error } = await admin.from("app_users").insert({
     name: values.name.trim(),
     username: values.username.trim().toLowerCase(),
     role: values.role,
@@ -40,11 +41,11 @@ export async function createUser(values: { name: string; username: string; role:
 }
 
 export async function updateUserRole(id: string, role: UserRole) {
-  const admin = await requireAdmin();
-  const supabase = await createClient();
+  const adminUser = await requireAdmin();
+  const admin = createAdminClient();
   // Prevent removing the last principal/admin's privileges
   if (role === "staff") {
-    const { data: admins } = await supabase
+    const { data: admins } = await admin
       .from("app_users")
       .select("id")
       .in("role", ["principal", "admin"])
@@ -54,17 +55,17 @@ export async function updateUserRole(id: string, role: UserRole) {
       throw new Error("Cannot demote the only remaining admin/principal.");
     }
   }
-  const { error } = await supabase.from("app_users").update({ role } as never).eq("id", id);
+  const { error } = await admin.from("app_users").update({ role } as never).eq("id", id);
   if (error) throw error;
   revalidatePath("/users");
-  await logAction("Users", "Changed role", `→ ${role}`, admin);
+  await logAction("Users", "Changed role", `→ ${role}`, adminUser);
 }
 
 export async function setUserActive(id: string, isActive: boolean) {
-  const admin = await requireAdmin();
-  if (admin.id === id && !isActive) throw new Error("You cannot deactivate your own account.");
-  const supabase = await createClient();
-  const { error } = await supabase.from("app_users").update({ is_active: isActive } as never).eq("id", id);
+  const adminUser = await requireAdmin();
+  if (adminUser.id === id && !isActive) throw new Error("You cannot deactivate your own account.");
+  const admin = createAdminClient();
+  const { error } = await admin.from("app_users").update({ is_active: isActive } as never).eq("id", id);
   if (error) throw error;
   revalidatePath("/users");
   await logAction("Users", isActive ? "Reactivated user" : "Deactivated user");
@@ -73,8 +74,8 @@ export async function setUserActive(id: string, isActive: boolean) {
 export async function resetUserPin(id: string, pin: string) {
   await requireAdmin();
   if (!/^\d{4,}$/.test(pin)) throw new Error("PIN must be at least 4 digits.");
-  const supabase = await createClient();
-  const { error } = await supabase.from("app_users").update({ pin_hash: hashPin(pin) } as never).eq("id", id);
+  const admin = createAdminClient();
+  const { error } = await admin.from("app_users").update({ pin_hash: hashPin(pin) } as never).eq("id", id);
   if (error) throw error;
   revalidatePath("/users");
   await logAction("Users", "Reset a user's PIN");

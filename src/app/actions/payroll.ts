@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/auth";
 import { logAction } from "@/app/actions/audit";
@@ -29,8 +30,8 @@ export async function createEmployee(values: {
   await requireAdmin();
   if (!values.name.trim()) throw new Error("Name is required.");
   if (!(values.monthly_pay >= 0)) throw new Error("Pay must be zero or more.");
-  const supabase = await createClient();
-  const { error } = await supabase.from("employees").insert({
+  const admin = createAdminClient();
+  const { error } = await admin.from("employees").insert({
     name: values.name.trim(),
     type: values.type,
     designation: values.designation?.trim() || null,
@@ -54,8 +55,8 @@ export async function updateEmployee(id: string, values: {
   if (values.designation !== undefined) patch.designation = values.designation?.trim?.() || null;
   if (values.phone !== undefined) patch.phone = values.phone?.trim?.() || null;
   if (values.monthly_pay !== undefined) patch.monthly_pay = values.monthly_pay;
-  const supabase = await createClient();
-  const { error } = await supabase.from("employees").update(patch as never).eq("id", id);
+  const admin = createAdminClient();
+  const { error } = await admin.from("employees").update(patch as never).eq("id", id);
   if (error) throw error;
   revalidatePath("/payroll");
   await logAction("Payroll", "Updated employee", values.monthly_pay !== undefined ? `pay → ${formatCurrency(values.monthly_pay)}/mo` : undefined);
@@ -63,8 +64,8 @@ export async function updateEmployee(id: string, values: {
 
 export async function setEmployeeActive(id: string, isActive: boolean) {
   await requireAdmin();
-  const supabase = await createClient();
-  const { error } = await supabase.from("employees").update({ is_active: isActive } as never).eq("id", id);
+  const admin = createAdminClient();
+  const { error } = await admin.from("employees").update({ is_active: isActive } as never).eq("id", id);
   if (error) throw error;
   revalidatePath("/payroll");
   await logAction("Payroll", isActive ? "Reactivated employee" : "Deactivated employee");
@@ -87,8 +88,8 @@ export async function getPayrolls(month: number, year: number): Promise<Payroll[
 /** Create payroll rows for every active employee for the given month (snapshotting current pay). */
 export async function generatePayroll(month: number, year: number): Promise<number> {
   await requireAdmin();
-  const supabase = await createClient();
-  const { data: emps, error: eErr } = await supabase
+  const admin = createAdminClient();
+  const { data: emps, error: eErr } = await admin
     .from("employees")
     .select("id, monthly_pay")
     .eq("is_active", true);
@@ -104,7 +105,7 @@ export async function generatePayroll(month: number, year: number): Promise<numb
     is_paid: false,
   }));
   // Don't overwrite existing rows (keeps edits & paid status)
-  const { error } = await supabase
+  const { error } = await admin
     .from("payrolls")
     .upsert(rows as never, { onConflict: "employee_id,month,year", ignoreDuplicates: true });
   if (error) throw error;
@@ -116,22 +117,22 @@ export async function generatePayroll(month: number, year: number): Promise<numb
 export async function updatePayrollAmount(id: string, amount: number) {
   await requireAdmin();
   if (!(amount >= 0)) throw new Error("Amount must be zero or more.");
-  const supabase = await createClient();
-  const { data: current } = await supabase.from("payrolls").select("is_paid").eq("id", id).single();
+  const admin = createAdminClient();
+  const { data: current } = await admin.from("payrolls").select("is_paid").eq("id", id).single();
   if ((current as unknown as { is_paid: boolean } | null)?.is_paid) {
     throw new Error("This payslip is already paid — mark it unpaid before changing the amount.");
   }
-  const { error } = await supabase.from("payrolls").update({ amount } as never).eq("id", id);
+  const { error } = await admin.from("payrolls").update({ amount } as never).eq("id", id);
   if (error) throw error;
   revalidatePath("/payroll");
   await logAction("Payroll", "Adjusted payslip amount", formatCurrency(amount));
 }
 
-async function getSalariesCategoryId(supabase: Awaited<ReturnType<typeof createClient>>): Promise<string | null> {
-  const { data } = await supabase.from("expense_categories").select("id").eq("name", "Salaries").maybeSingle();
+async function getSalariesCategoryId(admin: ReturnType<typeof createAdminClient>): Promise<string | null> {
+  const { data } = await admin.from("expense_categories").select("id").eq("name", "Salaries").maybeSingle();
   const found = (data as unknown as { id: string } | null)?.id;
   if (found) return found;
-  const { data: created } = await supabase
+  const { data: created } = await admin
     .from("expense_categories")
     .insert({ name: "Salaries" } as never)
     .select("id")
@@ -141,10 +142,10 @@ async function getSalariesCategoryId(supabase: Awaited<ReturnType<typeof createC
 
 /** Mark a payslip paid — records a Salaries expense in that payroll month. */
 export async function markPayrollPaid(id: string) {
-  const admin = await requireAdmin();
-  const supabase = await createClient();
+  const adminUser = await requireAdmin();
+  const admin = createAdminClient();
 
-  const { data: p, error: pErr } = await supabase
+  const { data: p, error: pErr } = await admin
     .from("payrolls")
     .select("*, employee:employees(name, type)")
     .eq("id", id)
@@ -154,7 +155,7 @@ export async function markPayrollPaid(id: string) {
   if (payroll.is_paid) throw new Error("This payslip is already paid.");
 
   const empName = payroll.employee?.name ?? "Employee";
-  const categoryId = await getSalariesCategoryId(supabase);
+  const categoryId = await getSalariesCategoryId(admin);
 
   // Date within the payroll month so it lands in that month's finance
   const now = new Date();
@@ -163,7 +164,7 @@ export async function markPayrollPaid(id: string) {
     ? now.toISOString().split("T")[0]
     : `${payroll.year}-${String(payroll.month).padStart(2, "0")}-01`;
 
-  const { data: exp, error: exErr } = await supabase
+  const { data: exp, error: exErr } = await admin
     .from("expenses")
     .insert({
       title: `Salary — ${empName} (${getMonthName(payroll.month)} ${payroll.year})`,
@@ -173,11 +174,11 @@ export async function markPayrollPaid(id: string) {
       payment_method: "Cash",
       paid_to: empName,
       notes: `Payroll · ${payroll.employee?.type ?? ""}`,
-      recorded_by: admin.name,
+      recorded_by: adminUser.name,
       status: "approved",
-      created_by: admin.id,
-      created_by_name: admin.name,
-      approved_by_name: admin.name,
+      created_by: adminUser.id,
+      created_by_name: adminUser.name,
+      approved_by_name: adminUser.name,
       approved_at: new Date().toISOString(),
     } as never)
     .select("id")
@@ -185,12 +186,12 @@ export async function markPayrollPaid(id: string) {
   if (exErr) throw exErr;
   const expenseId = (exp as unknown as { id: string }).id;
 
-  const { error } = await supabase
+  const { error } = await admin
     .from("payrolls")
     .update({
       is_paid: true,
       paid_at: new Date().toISOString(),
-      paid_by: admin.name,
+      paid_by: adminUser.name,
       expense_id: expenseId,
     } as never)
     .eq("id", id);
@@ -206,13 +207,13 @@ export async function markPayrollPaid(id: string) {
 /** Reverse a paid payslip — removes the linked Salaries expense. */
 export async function markPayrollUnpaid(id: string) {
   await requireAdmin();
-  const supabase = await createClient();
-  const { data: p } = await supabase.from("payrolls").select("expense_id").eq("id", id).single();
+  const admin = createAdminClient();
+  const { data: p } = await admin.from("payrolls").select("expense_id").eq("id", id).single();
   const expenseId = (p as unknown as { expense_id: string | null } | null)?.expense_id;
   if (expenseId) {
-    await supabase.from("expenses").delete().eq("id", expenseId);
+    await admin.from("expenses").delete().eq("id", expenseId);
   }
-  const { error } = await supabase
+  const { error } = await admin
     .from("payrolls")
     .update({ is_paid: false, paid_at: null, paid_by: null, expense_id: null } as never)
     .eq("id", id);

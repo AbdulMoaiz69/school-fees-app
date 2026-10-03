@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser, type SessionUser } from "@/lib/auth";
 import type { AuditLog } from "@/lib/supabase/types";
 
@@ -20,8 +21,8 @@ export async function logAction(
 ) {
   try {
     const user = actor ?? (await getCurrentUser());
-    const supabase = await createClient();
-    await supabase.from("audit_logs").insert({
+    const admin = createAdminClient();
+    await admin.from("audit_logs").insert({
       user_id: user?.id ?? null,
       user_name: user?.name ?? "System",
       role: user?.role ?? null,

@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import type { Expense, ExpenseCategory } from "@/lib/supabase/types";
 import { getCurrentUser, requireUser, requireAdmin, isAdmin } from "@/lib/auth";
@@ -24,8 +25,8 @@ export async function createExpenseCategory(name: string) {
   await requireAdmin();
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Category name is required.");
-  const supabase = await createClient();
-  const { error } = await supabase.from("expense_categories").insert({ name: trimmed } as never);
+  const admin = createAdminClient();
+  const { error } = await admin.from("expense_categories").insert({ name: trimmed } as never);
   if (error) throw error;
   revalidatePath("/expenses");
   await logAction("Expenses", "Added category", trimmed);
@@ -35,8 +36,8 @@ export async function updateExpenseCategory(id: string, name: string) {
   await requireAdmin();
   const trimmed = name.trim();
   if (!trimmed) throw new Error("Category name is required.");
-  const supabase = await createClient();
-  const { error } = await supabase.from("expense_categories").update({ name: trimmed } as never).eq("id", id);
+  const admin = createAdminClient();
+  const { error } = await admin.from("expense_categories").update({ name: trimmed } as never).eq("id", id);
   if (error) throw error;
   revalidatePath("/expenses");
   await logAction("Expenses", "Renamed category", trimmed);
@@ -44,9 +45,9 @@ export async function updateExpenseCategory(id: string, name: string) {
 
 export async function deleteExpenseCategory(id: string) {
   await requireAdmin();
-  const supabase = await createClient();
+  const admin = createAdminClient();
   // expenses.category_id is ON DELETE SET NULL, so existing expenses are preserved as "Uncategorized"
-  const { error } = await supabase.from("expense_categories").delete().eq("id", id);
+  const { error } = await admin.from("expense_categories").delete().eq("id", id);
   if (error) throw error;
   revalidatePath("/expenses");
   await logAction("Expenses", "Deleted a category");
@@ -103,8 +104,8 @@ export async function createExpense(values: ExpenseInput) {
   const admin = isAdmin(user.role);
   const status = admin ? "approved" : "pending";
 
-  const supabase = await createClient();
-  const { error } = await supabase.from("expenses").insert({
+  const adminClient = createAdminClient();
+  const { error } = await adminClient.from("expenses").insert({
     title: values.title.trim(),
     amount: values.amount,
     category_id: values.category_id,
@@ -131,9 +132,9 @@ export async function createExpense(values: ExpenseInput) {
 
 export async function approveExpense(id: string) {
   const admin = await requireAdmin();
-  const supabase = await createClient();
-  const { data: exp } = await supabase.from("expenses").select("title, amount").eq("id", id).single();
-  const { error } = await supabase.from("expenses").update({
+  const adminClient = createAdminClient();
+  const { data: exp } = await adminClient.from("expenses").select("title, amount").eq("id", id).single();
+  const { error } = await adminClient.from("expenses").update({
     status: "approved",
     approved_by_name: admin.name,
     approved_at: new Date().toISOString(),
@@ -148,9 +149,9 @@ export async function approveExpense(id: string) {
 
 export async function rejectExpense(id: string, reason?: string) {
   const admin = await requireAdmin();
-  const supabase = await createClient();
-  const { data: exp } = await supabase.from("expenses").select("title, amount").eq("id", id).single();
-  const { error } = await supabase.from("expenses").update({
+  const adminClient = createAdminClient();
+  const { data: exp } = await adminClient.from("expenses").select("title, amount").eq("id", id).single();
+  const { error } = await adminClient.from("expenses").update({
     status: "rejected",
     approved_by_name: admin.name,
     approved_at: new Date().toISOString(),
@@ -167,8 +168,8 @@ async function assertCanModifyExpense(id: string) {
   const user = await requireUser();
   if (isAdmin(user.role)) return user;
   // Staff may only modify their own still-pending expenses
-  const supabase = await createClient();
-  const { data } = await supabase.from("expenses").select("created_by, status").eq("id", id).single();
+  const adminClient = createAdminClient();
+  const { data } = await adminClient.from("expenses").select("created_by, status").eq("id", id).single();
   const e = data as unknown as { created_by: string | null; status: string } | null;
   if (!e || e.created_by !== user.id || e.status !== "pending") {
     throw new Error("You can only modify your own expenses while they're pending approval.");
@@ -180,8 +181,8 @@ export async function updateExpense(id: string, values: ExpenseInput) {
   await assertCanModifyExpense(id);
   if (!values.title?.trim()) throw new Error("Expense title is required.");
   if (!(values.amount > 0)) throw new Error("Amount must be greater than zero.");
-  const supabase = await createClient();
-  const { error } = await supabase.from("expenses").update({
+  const adminClient = createAdminClient();
+  const { error } = await adminClient.from("expenses").update({
     title: values.title.trim(),
     amount: values.amount,
     category_id: values.category_id,
@@ -199,8 +200,8 @@ export async function updateExpense(id: string, values: ExpenseInput) {
 
 export async function deleteExpense(id: string) {
   await assertCanModifyExpense(id);
-  const supabase = await createClient();
-  const { error } = await supabase.from("expenses").delete().eq("id", id);
+  const adminClient = createAdminClient();
+  const { error } = await adminClient.from("expenses").delete().eq("id", id);
   if (error) throw error;
   revalidatePath("/expenses");
   revalidatePath("/dashboard");
@@ -209,8 +210,8 @@ export async function deleteExpense(id: string) {
 
 export async function setOpeningBalance(value: number) {
   await requireAdmin();
-  const supabase = await createClient();
-  const { error } = await supabase
+  const admin = createAdminClient();
+  const { error } = await admin
     .from("settings")
     .upsert({ key: "opening_balance", value: String(value) } as never, { onConflict: "key" });
   if (error) throw error;

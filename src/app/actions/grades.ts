@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import type { Grade } from "@/lib/supabase/types";
 import { requireAdmin } from "@/lib/auth";
@@ -33,8 +34,8 @@ export async function createGrade(values: {
   display_order: number;
 }) {
   await requireAdmin();
-  const supabase = await createClient();
-  const { error } = await supabase.from("grades").insert(values as never);
+  const admin = createAdminClient();
+  const { error } = await admin.from("grades").insert(values as never);
   if (error) throw error;
   revalidatePath("/settings");
   revalidatePath("/students");
@@ -46,8 +47,8 @@ export async function updateGrade(
   values: { name?: string; monthly_fee?: number; display_order?: number }
 ) {
   await requireAdmin();
-  const supabase = await createClient();
-  const { error } = await supabase.from("grades").update(values as never).eq("id", id);
+  const admin = createAdminClient();
+  const { error } = await admin.from("grades").update(values as never).eq("id", id);
   if (error) throw error;
   revalidatePath("/settings");
   revalidatePath("/students");
@@ -57,8 +58,8 @@ export async function updateGrade(
 
 export async function deleteGrade(id: string) {
   await requireAdmin();
-  const supabase = await createClient();
-  const { error } = await supabase.from("grades").delete().eq("id", id);
+  const admin = createAdminClient();
+  const { error } = await admin.from("grades").delete().eq("id", id);
   if (error) throw error;
   revalidatePath("/settings");
   revalidatePath("/students");

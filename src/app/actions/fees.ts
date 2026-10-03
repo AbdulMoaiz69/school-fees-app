@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import type { FeeChallan } from "@/lib/supabase/types";
 import { computeDiscount, computeTotal, getDueDate, getMonthName } from "@/lib/fee-utils";
@@ -46,9 +47,10 @@ export async function getChallan(id: string): Promise<FeeChallan | null> {
 }
 
 export async function generateMonthlyFees(month: number, year: number) {
-  const supabase = await createClient();
+  await requireUser();
+  const admin = createAdminClient();
 
-  const { data: students, error: studentsError } = await supabase
+  const { data: students, error: studentsError } = await admin
     .from("students")
     .select("*, grade:grades!students_grade_id_fkey(*)")
     .eq("is_active", true);
@@ -86,7 +88,7 @@ export async function generateMonthlyFees(month: number, year: number) {
     return { ...challan, total: computeTotal(challan as Parameters<typeof computeTotal>[0]) };
   });
 
-  const { error } = await supabase
+  const { error } = await admin
     .from("fee_challans")
     .upsert(challans as never, { onConflict: "student_id,month,year", ignoreDuplicates: true });
 
@@ -110,7 +112,8 @@ export async function createChallan(values: {
   scholarship_type: "none" | "half" | "full" | "sibling" | "custom";
   custom_discount_pkr?: number;
 }) {
-  const supabase = await createClient();
+  await requireUser();
+  const admin = createAdminClient();
   const dueDate = getDueDate(values.month, values.year);
   const discount = computeDiscount(values.tuition_fee, values.scholarship_type, values.custom_discount_pkr ?? 0);
 
@@ -124,7 +127,7 @@ export async function createChallan(values: {
   };
   challan.total = computeTotal(challan as Parameters<typeof computeTotal>[0]);
 
-  const { data, error } = await supabase
+  const { data, error } = await admin
     .from("fee_challans")
     .insert(challan as never)
     .select()
@@ -145,9 +148,10 @@ export async function updateChallan(
     arrears: number;
   }>
 ) {
-  const supabase = await createClient();
+  await requireUser();
+  const admin = createAdminClient();
 
-  const { data: current, error: fetchError } = await supabase
+  const { data: current, error: fetchError } = await admin
     .from("fee_challans")
     .select("*")
     .eq("id", id)
@@ -157,7 +161,7 @@ export async function updateChallan(
   const updated = { ...(current as unknown as FeeChallan), ...values };
   const total = computeTotal(updated);
 
-  const { error } = await supabase
+  const { error } = await admin
     .from("fee_challans")
     .update({ ...values, total } as never)
     .eq("id", id);
@@ -172,8 +176,8 @@ export async function markChallanPaid(
   paymentNotes?: string
 ) {
   await requireUser();
-  const supabase = await createClient();
-  const { error } = await supabase
+  const admin = createAdminClient();
+  const { error } = await admin
     .from("fee_challans")
     .update({
       is_paid: true,
@@ -191,8 +195,8 @@ export async function markChallanPaid(
 
 export async function markChallanUnpaid(id: string) {
   await requireUser();
-  const supabase = await createClient();
-  const { error } = await supabase
+  const admin = createAdminClient();
+  const { error } = await admin
     .from("fee_challans")
     .update({ is_paid: false, paid_at: null, paid_by: null, payment_notes: null } as never)
     .eq("id", id);

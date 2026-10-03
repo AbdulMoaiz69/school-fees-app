@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import type { Student } from "@/lib/supabase/types";
 import { generateRegistrationNumber } from "@/lib/fee-utils";
@@ -60,8 +61,8 @@ export async function createStudent(values: {
   sibling_id?: string | null;
   custom_discount_pkr?: number;
 }) {
-  const supabase = await createClient();
-  const { data: existing } = await supabase
+  const admin = createAdminClient();
+  const { data: existing } = await admin
     .from("students")
     .select("registration_number");
   const existingNumbers = ((existing ?? []) as unknown as { registration_number: string }[]).map(
@@ -83,7 +84,7 @@ export async function createStudent(values: {
     registration_number,
   };
 
-  const { data, error } = await supabase
+  const { data, error } = await admin
     .from("students")
     .insert(payload as never)
     .select()
@@ -116,7 +117,8 @@ export async function updateStudent(
     custom_discount_pkr: number;
   }>
 ) {
-  const supabase = await createClient();
+  await requireUser();
+  const admin = createAdminClient();
   const payload: Record<string, unknown> = { ...values };
   if ("date_of_birth" in values) {
     payload.date_of_birth = values.date_of_birth?.trim() || null;
@@ -128,7 +130,7 @@ export async function updateStudent(
     payload.admission_date = values.admission_date?.trim() || null;
   }
 
-  const { error } = await supabase.from("students").update(payload as never).eq("id", id);
+  const { error } = await admin.from("students").update(payload as never).eq("id", id);
   if (error) throw error;
   revalidatePath("/students");
   revalidatePath(`/students/${id}`);
@@ -139,8 +141,9 @@ export async function updateStudent(
 }
 
 export async function deleteStudent(id: string) {
-  const supabase = await createClient();
-  const { error } = await supabase
+  await requireUser();
+  const admin = createAdminClient();
+  const { error } = await admin
     .from("students")
     .update({ is_active: false } as never)
     .eq("id", id);
@@ -156,7 +159,7 @@ export async function deleteStudent(id: string) {
 type GradeOrder = { id: string; display_order: number };
 
 async function getGradeLadder(
-  supabase: Awaited<ReturnType<typeof createClient>>
+  supabase: Awaited<ReturnType<typeof createClient>> | Awaited<ReturnType<typeof createAdminClient>>
 ): Promise<GradeOrder[]> {
   const { data, error } = await supabase
     .from("grades")
@@ -169,8 +172,8 @@ async function getGradeLadder(
 /** Move a single student up (+1) or down (-1) the class ladder. */
 async function moveStudent(id: string, delta: 1 | -1) {
   await requireUser();
-  const supabase = await createClient();
-  const { data: student, error: sErr } = await supabase
+  const admin = createAdminClient();
+  const { data: student, error: sErr } = await admin
     .from("students")
     .select("grade_id, full_name")
     .eq("id", id)
@@ -180,14 +183,14 @@ async function moveStudent(id: string, delta: 1 | -1) {
   const gradeId = s?.grade_id;
   if (!gradeId) throw new Error("Assign a class to this student before promoting or demoting.");
 
-  const ladder = await getGradeLadder(supabase);
+  const ladder = await getGradeLadder(admin);
   const idx = ladder.findIndex((g) => g.id === gradeId);
   const target = ladder[idx + delta];
   if (!target) {
     throw new Error(delta > 0 ? "Student is already in the highest class." : "Student is already in the lowest class.");
   }
 
-  const { error } = await supabase
+  const { error } = await admin
     .from("students")
     .update({ grade_id: target.id } as never)
     .eq("id", id);
@@ -208,8 +211,9 @@ export async function demoteStudent(id: string) {
 
 /** Retain keeps the student in their current class — an explicit no-op that re-affirms the class. */
 export async function retainStudent(id: string) {
-  const supabase = await createClient();
-  const { data: student, error: sErr } = await supabase
+  await requireUser();
+  const admin = createAdminClient();
+  const { data: student, error: sErr } = await admin
     .from("students")
     .select("grade_id")
     .eq("id", id)
@@ -217,7 +221,7 @@ export async function retainStudent(id: string) {
   if (sErr) throw sErr;
   const gradeId = (student as unknown as { grade_id: string | null })?.grade_id ?? null;
   // Re-set the same class (no change) so the action succeeds without touching new columns.
-  const { error } = await supabase
+  const { error } = await admin
     .from("students")
     .update({ grade_id: gradeId } as never)
     .eq("id", id);
@@ -250,7 +254,7 @@ export async function getStudentDues(id: string): Promise<StudentDues> {
 
 async function exitStudent(id: string, status: "expelled" | "withdrawn", reason: string | null, characterRemarks?: string | null, lastPromotedClassId?: string | null) {
   await requireUser();
-  const supabase = await createClient();
+  const admin = createAdminClient();
 
   // Guard: block the exit while any dues are outstanding.
   const dues = await getStudentDues(id);
@@ -261,7 +265,7 @@ async function exitStudent(id: string, status: "expelled" | "withdrawn", reason:
   }
 
   // Get current grade to use as last_promoted_class if not provided
-  const { data: student } = await supabase
+  const { data: student } = await admin
     .from("students")
     .select("grade_id")
     .eq("id", id)
@@ -277,7 +281,7 @@ async function exitStudent(id: string, status: "expelled" | "withdrawn", reason:
     certificate_generated_at: new Date().toISOString(),
   };
 
-  const { error } = await supabase
+  const { error } = await admin
     .from("students")
     .update(updatePayload as never)
     .eq("id", id);
@@ -300,8 +304,8 @@ export async function withdrawStudent(id: string, reason?: string, characterRema
 /** Restore an expelled/withdrawn student to active. */
 export async function reinstateStudent(id: string) {
   await requireUser();
-  const supabase = await createClient();
-  const { error } = await supabase
+  const admin = createAdminClient();
+  const { error } = await admin
     .from("students")
     .update({ status: "active", is_active: true, exit_reason: null, exit_date: null } as never)
     .eq("id", id);
@@ -315,8 +319,8 @@ export async function reinstateStudent(id: string) {
 /** Promote or demote every active student in a class. Returns how many were moved. */
 export async function bulkMoveClass(gradeId: string, delta: 1 | -1): Promise<number> {
   await requireUser();
-  const supabase = await createClient();
-  const ladder = await getGradeLadder(supabase);
+  const admin = createAdminClient();
+  const ladder = await getGradeLadder(admin);
   const idx = ladder.findIndex((g) => g.id === gradeId);
   if (idx === -1) throw new Error("Class not found.");
   const target = ladder[idx + delta];
@@ -324,7 +328,7 @@ export async function bulkMoveClass(gradeId: string, delta: 1 | -1): Promise<num
     throw new Error(delta > 0 ? "This is already the highest class — nowhere to promote to." : "This is already the lowest class — nowhere to demote to.");
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await admin
     .from("students")
     .update({ grade_id: target.id } as never)
     .eq("grade_id", gradeId)
