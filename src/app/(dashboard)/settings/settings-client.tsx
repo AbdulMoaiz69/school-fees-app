@@ -18,7 +18,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/fee-utils";
-import { Plus, Pencil, Trash2, Loader2, Save, GraduationCap, Building2, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Save, GraduationCap, Building2, AlertTriangle, Upload, ImageIcon } from "lucide-react";
 
 interface Props { grades: Grade[]; settings: Record<string, string>; }
 
@@ -40,6 +40,7 @@ export function SettingsClient({ grades: init, settings: initSettings }: Props) 
   const [editingGrade, setEditingGrade] = useState<Grade | null>(null);
   const [gradeForm, setGradeForm] = useState<GradeForm>({ name: "", monthly_fee: "", display_order: "" });
   const [deletingGrade, setDeletingGrade] = useState<Grade | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   function openAdd() {
     setEditingGrade(null);
@@ -92,6 +93,47 @@ export function SettingsClient({ grades: init, settings: initSettings }: Props) 
     });
   }
 
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Invalid file type. Use PNG, JPG, WebP, or SVG");
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("File too large. Max 2MB");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload-logo", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Upload failed");
+      }
+
+      setSchool((p) => ({ ...p, school_logo: data.url }));
+      toast.success("Logo uploaded");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  }
+
   return (
     <div className="p-6 space-y-6 max-w-2xl">
       {/* School Info */}
@@ -105,18 +147,53 @@ export function SettingsClient({ grades: init, settings: initSettings }: Props) 
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
-            <Label>School Logo URL</Label>
-            <Input
-              value={school.school_logo}
-              onChange={(e) => setSchool((p) => ({ ...p, school_logo: e.target.value }))}
-              placeholder="https://example.com/logo.png or data:image/png;base64,..."
-            />
-            <p className="text-xs text-muted-foreground">Enter an image URL or base64 data URL. Will appear on all documents.</p>
-            {school.school_logo && (
-              <div className="mt-2">
-                <img src={school.school_logo} alt="Logo preview" className="h-16 w-auto rounded border" />
+            <Label>School Logo</Label>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => document.getElementById("logo-upload")?.click()}
+                  disabled={uploading}
+                  className="h-9"
+                >
+                  {uploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                  Upload from PC
+                </Button>
+                <input
+                  id="logo-upload"
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+                  onChange={handleLogoUpload}
+                  className="hidden"
+                />
               </div>
-            )}
+              <div className="flex items-center gap-3">
+                <Input
+                  value={school.school_logo}
+                  onChange={(e) => setSchool((p) => ({ ...p, school_logo: e.target.value }))}
+                  placeholder="Or paste image URL / base64 data URL"
+                />
+                {school.school_logo && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setSchool((p) => ({ ...p, school_logo: "" }))}
+                    className="h-8 w-8"
+                  >
+                    <ImageIcon className="h-4 w-4 text-destructive" />
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">Upload from PC, or enter an image URL or base64 data URL. Will appear on all documents.</p>
+              {school.school_logo && (
+                <div className="mt-2">
+                  <img src={school.school_logo} alt="Logo preview" className="h-16 w-auto rounded border" />
+                </div>
+              )}
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label>School Name</Label>
