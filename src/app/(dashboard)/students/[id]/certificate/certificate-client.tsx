@@ -25,7 +25,7 @@ export function CertificateClient({ student, settings, lastPromotedClass }: Cert
   const currentClass = student.grade?.name ?? "Not Assigned";
   const lastPromotedClassName = lastPromotedClass?.name ?? "N/A";
   const exitType = student.status === "expelled" ? "Cancellation of Registration" : "School Leaving Certificate";
-  const exitVerb = student.status === "expelled" ? "registration cancelled" : "issued school leaving certificate";
+  const exitVerb = student.status === "expelled" ? "expelled" : "issued school leaving certificate";
   const exitDate = student.exit_date ? new Date(student.exit_date).toLocaleDateString("en-PK", {
     day: "numeric",
     month: "long",
