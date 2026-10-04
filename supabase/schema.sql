@@ -33,7 +33,8 @@ insert into settings (key, value) values
   ('late_fee_amount', '200'),
   ('school_name', 'My School'),
   ('school_address', 'School Address Here'),
-  ('school_phone', '')
+  ('school_phone', ''),
+  ('school_logo', '')
 on conflict (key) do nothing;
 
 -- =============================================

@@ -19,6 +19,7 @@ export function PrintableChallan({ challan, settings }: PrintableChallanProps) {
   const schoolName = settings.school_name ?? "School Name";
   const schoolAddress = settings.school_address ?? "";
   const schoolPhone = settings.school_phone ?? "";
+  const schoolLogo = settings.school_logo ?? "";
   const student = challan.student;
   const monthYear = `${getMonthName(challan.month)} ${challan.year}`;
 
@@ -59,6 +60,7 @@ export function PrintableChallan({ challan, settings }: PrintableChallanProps) {
       {/* Screen preview card */}
       <div className="no-print bg-card border rounded-xl p-6 max-w-2xl space-y-4">
         <div className="text-center border-b pb-4">
+          {schoolLogo && <img src={schoolLogo} alt="School Logo" className="h-16 w-auto mx-auto mb-2" />}
           <h2 className="text-xl font-bold">{schoolName}</h2>
           {schoolAddress && <p className="text-sm text-muted-foreground">{schoolAddress}</p>}
           {schoolPhone && <p className="text-sm text-muted-foreground">{schoolPhone}</p>}
@@ -176,6 +178,7 @@ export function PrintableChallan({ challan, settings }: PrintableChallanProps) {
 
               {/* School Header */}
               <div style={{ textAlign: "center", borderBottom: "2px solid #000", paddingBottom: "2mm", marginBottom: "3mm" }}>
+                {schoolLogo && <img src={schoolLogo} alt="School Logo" style={{ height: "30px", width: "auto", marginBottom: "2mm" }} />}
                 <h2 style={{ margin: 0, fontSize: "13pt", fontWeight: "bold" }}>{schoolName}</h2>
                 {schoolAddress && <p style={{ margin: "0.5mm 0 0", fontSize: "8pt", color: "#555" }}>{schoolAddress}</p>}
                 {schoolPhone && <p style={{ margin: "0.5mm 0 0", fontSize: "8pt", color: "#555" }}>Tel: {schoolPhone}</p>}

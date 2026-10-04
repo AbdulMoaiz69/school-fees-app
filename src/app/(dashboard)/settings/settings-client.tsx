@@ -32,6 +32,7 @@ export function SettingsClient({ grades: init, settings: initSettings }: Props) 
     school_name: initSettings.school_name ?? "",
     school_address: initSettings.school_address ?? "",
     school_phone: initSettings.school_phone ?? "",
+    school_logo: initSettings.school_logo ?? "",
     late_fee_amount: initSettings.late_fee_amount ?? "200",
   });
 
@@ -100,9 +101,23 @@ export function SettingsClient({ grades: init, settings: initSettings }: Props) 
             <Building2 className="h-4 w-4 text-muted-foreground" />
             <CardTitle className="text-base">School Information</CardTitle>
           </div>
-          <CardDescription>Shown on printed fee challans</CardDescription>
+          <CardDescription>Shown on printed fee challans and certificates</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>School Logo URL</Label>
+            <Input
+              value={school.school_logo}
+              onChange={(e) => setSchool((p) => ({ ...p, school_logo: e.target.value }))}
+              placeholder="https://example.com/logo.png or data:image/png;base64,..."
+            />
+            <p className="text-xs text-muted-foreground">Enter an image URL or base64 data URL. Will appear on all documents.</p>
+            {school.school_logo && (
+              <div className="mt-2">
+                <img src={school.school_logo} alt="Logo preview" className="h-16 w-auto rounded border" />
+              </div>
+            )}
+          </div>
           <div className="space-y-1.5">
             <Label>School Name</Label>
             <Input

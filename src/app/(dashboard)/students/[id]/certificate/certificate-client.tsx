@@ -20,6 +20,7 @@ export function CertificateClient({ student, settings, lastPromotedClass }: Cert
   const schoolName = settings.school_name ?? "School Name";
   const schoolAddress = settings.school_address ?? "School Address";
   const schoolPhone = settings.school_phone ?? "";
+  const schoolLogo = settings.school_logo ?? "";
 
   const currentClass = student.grade?.name ?? "Not Assigned";
   const lastPromotedClassName = lastPromotedClass?.name ?? "N/A";
@@ -66,12 +67,16 @@ export function CertificateClient({ student, settings, lastPromotedClass }: Cert
       <div className="border-2 border-gray-300 rounded-lg p-8 bg-white shadow-lg" style={{ fontFamily: "Georgia, serif" }}>
         {/* School Header */}
         <div className="text-center mb-8 border-b-2 border-gray-300 pb-6">
-          <div className="w-20 h-20 mx-auto mb-4 rounded-full border-2 border-primary bg-primary/10 flex items-center justify-center">
-            <svg className="w-12 h-12 text-primary" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3z" />
-              <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" />
-            </svg>
-          </div>
+          {schoolLogo ? (
+            <img src={schoolLogo} alt="School Logo" className="h-20 w-auto mx-auto mb-4" />
+          ) : (
+            <div className="w-20 h-20 mx-auto mb-4 rounded-full border-2 border-primary bg-primary/10 flex items-center justify-center">
+              <svg className="w-12 h-12 text-primary" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3z" />
+                <path d="M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" />
+              </svg>
+            </div>
+          )}
           <h1 className="text-3xl font-bold text-gray-900 mb-1">{schoolName}</h1>
           <p className="text-gray-600">{schoolAddress}</p>
           {schoolPhone && <p className="text-gray-600">Phone: {schoolPhone}</p>}
