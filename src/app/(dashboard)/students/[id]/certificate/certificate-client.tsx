@@ -24,8 +24,8 @@ export function CertificateClient({ student, settings, lastPromotedClass }: Cert
 
   const currentClass = student.grade?.name ?? "Not Assigned";
   const lastPromotedClassName = lastPromotedClass?.name ?? "N/A";
-  const exitType = student.status === "expelled" ? "Expulsion" : "Withdrawal";
-  const exitVerb = student.status === "expelled" ? "expelled" : "withdrawn";
+  const exitType = student.status === "expelled" ? "Cancellation of Registration" : "Withdrawal";
+  const exitVerb = student.status === "expelled" ? "registration cancelled" : "withdrawn";
   const exitDate = student.exit_date ? new Date(student.exit_date).toLocaleDateString("en-PK", {
     day: "numeric",
     month: "long",
@@ -85,9 +85,8 @@ export function CertificateClient({ student, settings, lastPromotedClass }: Cert
 
         {/* Certificate Title */}
         <div className="text-center mb-8">
-          <p className="text-sm text-gray-500 uppercase tracking-wider mb-2">Official Certificate</p>
-          <h2 className="text-4xl font-bold text-gray-900 mb-2">{exitType} Certificate</h2>
-          <p className="text-lg text-gray-600">Certificate No: <span className="font-mono font-semibold">{student.registration_number}-{exitType.slice(0, 3).toUpperCase()}</span></p>
+          <h2 className="text-4xl font-bold text-gray-900 mb-2">{exitType}</h2>
+          <p className="text-lg text-gray-600">Certificate No: <span className="font-mono font-semibold">{student.registration_number}-{student.status === "expelled" ? "COR" : "WDL"}</span></p>
         </div>
 
         {/* Body */}
@@ -115,7 +114,7 @@ export function CertificateClient({ student, settings, lastPromotedClass }: Cert
 
           {student.exit_reason && (
             <div className="bg-gray-50 p-4 rounded-lg border">
-              <p><strong>Reason for {exitType.toLowerCase()}:</strong></p>
+              <p><strong>Reason:</strong></p>
               <p className="mt-1">{student.exit_reason}</p>
             </div>
           )}
