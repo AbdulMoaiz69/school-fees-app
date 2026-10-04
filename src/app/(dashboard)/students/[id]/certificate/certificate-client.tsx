@@ -24,8 +24,8 @@ export function CertificateClient({ student, settings, lastPromotedClass }: Cert
 
   const currentClass = student.grade?.name ?? "Not Assigned";
   const lastPromotedClassName = lastPromotedClass?.name ?? "N/A";
-  const exitType = student.status === "expelled" ? "Cancellation of Registration" : "Withdrawal";
-  const exitVerb = student.status === "expelled" ? "registration cancelled" : "withdrawn";
+  const exitType = student.status === "expelled" ? "Cancellation of Registration" : "School Leaving Certificate";
+  const exitVerb = student.status === "expelled" ? "registration cancelled" : "issued school leaving certificate";
   const exitDate = student.exit_date ? new Date(student.exit_date).toLocaleDateString("en-PK", {
     day: "numeric",
     month: "long",
@@ -86,7 +86,7 @@ export function CertificateClient({ student, settings, lastPromotedClass }: Cert
         {/* Certificate Title */}
         <div className="text-center mb-8">
           <h2 className="text-4xl font-bold text-gray-900 mb-2">{exitType}</h2>
-          <p className="text-lg text-gray-600">Certificate No: <span className="font-mono font-semibold">{student.registration_number}-{student.status === "expelled" ? "COR" : "WDL"}</span></p>
+          <p className="text-lg text-gray-600">Certificate No: <span className="font-mono font-semibold">{student.registration_number}-{student.status === "expelled" ? "COR" : "SLC"}</span></p>
         </div>
 
         {/* Body */}
@@ -109,7 +109,9 @@ export function CertificateClient({ student, settings, lastPromotedClass }: Cert
           </div>
 
           <p className="mt-4">
-            has been <strong>{exitVerb}</strong> from this institution on <strong>{exitDate}</strong>.
+            {student.status === "expelled"
+              ? `has been <strong>${exitVerb}</strong> from this institution on <strong>${exitDate}</strong>.`
+              : `has been granted a <strong>School Leaving Certificate</strong> on <strong>${exitDate}</strong>.`}
           </p>
 
           {student.exit_reason && (
@@ -135,7 +137,7 @@ export function CertificateClient({ student, settings, lastPromotedClass }: Cert
               <p className="font-semibold text-amber-800">Security Deposit Refund</p>
               <p className="text-sm text-amber-700 mt-1">
                 A refundable security deposit of <strong>{formatCurrency(student.security_fee)}</strong> was collected at admission.
-                This amount should be refunded to the parent/guardian upon {exitVerb}.
+                This amount should be refunded to the parent/guardian upon {student.status === "expelled" ? "cancellation of registration" : "school leaving"}.
               </p>
             </div>
           )}
