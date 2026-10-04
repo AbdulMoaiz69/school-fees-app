@@ -2,12 +2,43 @@
 
 import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { FileDown, Loader2 } from "lucide-react";
+import { FileDown, Loader2, Check, X } from "lucide-react";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import type { Student, Grade } from "@/lib/supabase/types";
 
 interface ClassListDownloadButtonProps {
   grade: Grade;
 }
+
+type FieldKey =
+  | "serial"
+  | "registration_number"
+  | "full_name"
+  | "parent_name"
+  | "date_of_birth"
+  | "admission_date"
+  | "address"
+  | "parent_phone"
+  | "scholarship_type"
+  | "previous_school";
+
+const ALL_FIELDS: { key: FieldKey; label: string; default: boolean }[] = [
+  { key: "serial", label: "#", default: true },
+  { key: "registration_number", label: "Admission ID", default: true },
+  { key: "full_name", label: "Full Name", default: true },
+  { key: "parent_name", label: "Father Name", default: true },
+  { key: "date_of_birth", label: "Date of Birth", default: true },
+  { key: "admission_date", label: "Admission Date", default: true },
+  { key: "address", label: "Address", default: true },
+  { key: "parent_phone", label: "Phone", default: true },
+  { key: "scholarship_type", label: "Scholarship", default: true },
+  { key: "previous_school", label: "Previous School", default: true },
+];
+
+const DEFAULT_FIELDS: FieldKey[] = ALL_FIELDS.filter((f) => f.default).map((f) => f.key);
 
 // Scholarship label helper
 function scholarshipLabel(type: string): string {
@@ -36,11 +67,65 @@ function formatDate(dateStr: string | null): string {
   }
 }
 
+function getCellValue(student: Student, field: FieldKey, index: number): string {
+  switch (field) {
+    case "serial":
+      return String(index + 1);
+    case "registration_number":
+      return student.registration_number;
+    case "full_name":
+      return student.full_name;
+    case "parent_name":
+      return student.parent_name ?? "—";
+    case "date_of_birth":
+      return formatDate(student.date_of_birth);
+    case "admission_date":
+      return formatDate(student.admission_date);
+    case "address":
+      return student.address ?? "—";
+    case "parent_phone":
+      return student.parent_phone ?? "—";
+    case "scholarship_type":
+      return student.scholarship_type !== "none" ? scholarshipLabel(student.scholarship_type) : "—";
+    case "previous_school":
+      return student.previous_school ?? "—";
+    default:
+      return "—";
+  }
+}
+
+function getCellAlign(field: FieldKey): string {
+  const centerFields: FieldKey[] = ["serial", "registration_number", "date_of_birth", "admission_date", "parent_phone", "scholarship_type"];
+  return centerFields.includes(field) ? "center" : "";
+}
+
 export function ClassListDownloadButton({ grade }: ClassListDownloadButtonProps) {
   const [loading, setLoading] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedFields, setSelectedFields] = useState<FieldKey[]>(DEFAULT_FIELDS);
+
+  function toggleField(field: FieldKey) {
+    setSelectedFields((prev) =>
+      prev.includes(field) ? prev.filter((f) => f !== field) : [...prev, field]
+    );
+  }
+
+  function selectAll() {
+    setSelectedFields(ALL_FIELDS.map((f) => f.key));
+  }
+
+  function selectNone() {
+    setSelectedFields([]);
+  }
 
   const handleDownload = useCallback(async () => {
+    if (selectedFields.length === 0) {
+      alert("Please select at least one field.");
+      return;
+    }
+
     setLoading(true);
+    setDialogOpen(false);
     try {
       const res = await fetch(`/api/class-list/${grade.id}`);
       if (!res.ok) throw new Error("Failed to fetch class list");
@@ -58,25 +143,32 @@ export function ClassListDownloadButton({ grade }: ClassListDownloadButtonProps)
         year: "numeric",
       });
 
+      // Build header row
+      const headerCells = selectedFields
+        .map((field) => {
+          const fieldDef = ALL_FIELDS.find((f) => f.key === field);
+          const align = getCellAlign(field) ? 'class="center"' : "";
+          return `<th ${align}>${fieldDef?.label ?? field}</th>`;
+        })
+        .join("");
+
+      // Build data rows
       const rows = students
         .map(
           (s, i) => `
           <tr class="${i % 2 === 0 ? "even" : "odd"}">
-            <td class="center">${i + 1}</td>
-            <td class="center mono">${s.registration_number}</td>
-            <td>${s.full_name}</td>
-            <td>${s.parent_name ?? "—"}</td>
-            <td class="center">${formatDate(s.date_of_birth)}</td>
-            <td class="center">${formatDate(s.admission_date)}</td>
-            <td>${s.address ?? "—"}</td>
-            <td class="center">${s.parent_phone ?? "—"}</td>
-            <td class="center">${
-              s.scholarship_type !== "none" ? scholarshipLabel(s.scholarship_type) : "—"
-            }</td>
-            <td>${s.previous_school ?? "—"}</td>
+            ${selectedFields
+              .map((field) => {
+                const align = getCellAlign(field) ? 'class="center"' : "";
+                const isMono = field === "registration_number" ? 'class="center mono"' : align;
+                return `<td ${isMono}>${getCellValue(s, field, i)}</td>`;
+              })
+              .join("")}
           </tr>`
         )
         .join("");
+
+      const colspan = selectedFields.length;
 
       const html = `<!DOCTYPE html>
 <html lang="en">
@@ -200,20 +292,11 @@ export function ClassListDownloadButton({ grade }: ClassListDownloadButtonProps)
   <table>
     <thead>
       <tr>
-        <th class="center" style="width:28px">#</th>
-        <th class="center" style="width:72px">Admission ID</th>
-        <th style="width:120px">Full Name</th>
-        <th style="width:110px">Father Name</th>
-        <th class="center" style="width:78px">Date of Birth</th>
-        <th class="center" style="width:78px">Admission Date</th>
-        <th style="width:130px">Address</th>
-        <th class="center" style="width:80px">Phone</th>
-        <th class="center" style="width:85px">Scholarship</th>
-        <th style="width:100px">Previous School</th>
+        ${headerCells}
       </tr>
     </thead>
     <tbody>
-      ${rows || '<tr><td colspan="10" style="text-align:center;padding:16px;color:#999;">No students found in this class.</td></tr>'}
+      ${rows || `<tr><td colspan="${colspan}" style="text-align:center;padding:16px;color:#999;">No students found in this class.</td></tr>`}
     </tbody>
   </table>
 
@@ -243,25 +326,84 @@ export function ClassListDownloadButton({ grade }: ClassListDownloadButtonProps)
     } finally {
       setLoading(false);
     }
-  }, [grade]);
+  }, [grade, selectedFields]);
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="h-5 w-5 ml-0.5 text-muted-foreground hover:text-primary"
-      title={`Download ${grade.name} class list`}
-      onClick={(e) => {
-        e.stopPropagation();
-        handleDownload();
-      }}
-      disabled={loading}
-    >
-      {loading ? (
-        <Loader2 className="h-3 w-3 animate-spin" />
-      ) : (
-        <FileDown className="h-3 w-3" />
-      )}
-    </Button>
+    <>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-5 w-5 ml-0.5 text-muted-foreground hover:text-primary"
+        title={`Download ${grade.name} class list`}
+        onClick={(e) => {
+          e.stopPropagation();
+          setDialogOpen(true);
+        }}
+        disabled={loading}
+      >
+        {loading ? (
+          <Loader2 className="h-3 w-3 animate-spin" />
+        ) : (
+          <FileDown className="h-3 w-3" />
+        )}
+      </Button>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Fields for Class List</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 py-2 max-h-80 overflow-y-auto">
+            <div className="flex items-center justify-between px-2 pb-2 border-b text-xs text-muted-foreground">
+              <span>Fields</span>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={selectAll}
+                  title="Select all"
+                >
+                  <Check className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={selectNone}
+                  title="Select none"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+            {ALL_FIELDS.map((field) => (
+              <div
+                key={field.key}
+                className="flex items-center gap-2 px-2 py-1.5 hover:bg-muted/50 rounded"
+              >
+                <input
+                  type="checkbox"
+                  id={`field-${field.key}`}
+                  checked={selectedFields.includes(field.key)}
+                  onChange={() => toggleField(field.key)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <Label htmlFor={`field-${field.key}`} className="text-sm cursor-pointer mb-0 flex-1">
+                  {field.label}
+                </Label>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleDownload} disabled={loading || selectedFields.length === 0}>
+              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Generate & Download
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
