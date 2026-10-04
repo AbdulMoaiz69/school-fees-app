@@ -69,7 +69,7 @@ export function CertificateClient({ student, settings, lastPromotedClass }: Cert
         {/* School Header */}
         <div className="text-center mb-8 border-b-2 border-gray-300 pb-6">
           {schoolLogo ? (
-            <img src={schoolLogo} alt="School Logo" className="h-28 w-auto mx-auto mb-4" />
+            <img src={schoolLogo} alt="School Logo" className="h-36 w-auto mx-auto mb-4" />
           ) : (
             <div className="w-20 h-20 mx-auto mb-4 rounded-full border-2 border-primary bg-primary/10 flex items-center justify-center">
               <svg className="w-12 h-12 text-primary" fill="currentColor" viewBox="0 0 24 24">
