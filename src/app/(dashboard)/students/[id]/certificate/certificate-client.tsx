@@ -25,6 +25,7 @@ export function CertificateClient({ student, settings, lastPromotedClass }: Cert
   const currentClass = student.grade?.name ?? "Not Assigned";
   const lastPromotedClassName = lastPromotedClass?.name ?? "N/A";
   const exitType = student.status === "expelled" ? "Expulsion" : "Withdrawal";
+  const exitVerb = student.status === "expelled" ? "expelled" : "withdrawn";
   const exitDate = student.exit_date ? new Date(student.exit_date).toLocaleDateString("en-PK", {
     day: "numeric",
     month: "long",
@@ -109,7 +110,7 @@ export function CertificateClient({ student, settings, lastPromotedClass }: Cert
           </div>
 
           <p className="mt-4">
-            has been <strong>{exitType.toLowerCase()}ed</strong> from this institution on <strong>{exitDate}</strong>.
+            has been <strong>{exitVerb}</strong> from this institution on <strong>{exitDate}</strong>.
           </p>
 
           {student.exit_reason && (
@@ -135,7 +136,7 @@ export function CertificateClient({ student, settings, lastPromotedClass }: Cert
               <p className="font-semibold text-amber-800">Security Deposit Refund</p>
               <p className="text-sm text-amber-700 mt-1">
                 A refundable security deposit of <strong>{formatCurrency(student.security_fee)}</strong> was collected at admission.
-                This amount should be refunded to the parent/guardian upon {exitType.toLowerCase()}.
+                This amount should be refunded to the parent/guardian upon {exitVerb}.
               </p>
             </div>
           )}
