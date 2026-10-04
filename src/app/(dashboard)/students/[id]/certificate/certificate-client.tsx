@@ -109,9 +109,15 @@ export function CertificateClient({ student, settings, lastPromotedClass }: Cert
           </div>
 
           <p className="mt-4">
-            {student.status === "expelled"
-              ? `has been <strong>${exitVerb}</strong> from this institution on <strong>${exitDate}</strong>.`
-              : `has been granted a <strong>School Leaving Certificate</strong> on <strong>${exitDate}</strong>.`}
+            {student.status === "expelled" ? (
+              <>
+                has been <strong>{exitVerb}</strong> from this institution on <strong>{exitDate}</strong>.
+              </>
+            ) : (
+              <>
+                has been granted a <strong>School Leaving Certificate</strong> on <strong>{exitDate}</strong>.
+              </>
+            )}
           </p>
 
           {student.exit_reason && (
