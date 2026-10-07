@@ -26,7 +26,6 @@ const STATUS_CLS: Record<string, string> = {
   unpaid: "text-amber-700 bg-amber-50 border-amber-200",
   late_fee: "text-orange-700 bg-orange-50 border-orange-200",
   arrears: "text-red-700 bg-red-50 border-red-200",
-  overdue: "text-red-700 bg-red-50 border-red-200",
 };
 
 const FEE_FIELDS: [keyof EditForm, string][] = [

@@ -57,6 +57,24 @@ export async function generateMonthlyFees(month: number, year: number) {
   if (studentsError) throw studentsError;
 
   const dueDate = getDueDate(month, year);
+  const currentMonthStart = new Date(year, month - 1, 1);
+
+  const studentIds = (students ?? []).map((s: any) => s.id);
+
+  const { data: unpaidChallans } = await admin
+    .from("fee_challans")
+    .select("student_id, month, year, total, is_paid")
+    .in("student_id", studentIds)
+    .eq("is_paid", false)
+    .or(`year.lt.${year},and(year.eq.${year},month.lt.${month})`);
+
+  const arrearsByStudent = new Map<string, { amount: number; months: string[] }>();
+  for (const c of (unpaidChallans ?? [])) {
+    const existing = arrearsByStudent.get(c.student_id) || { amount: 0, months: [] };
+    existing.amount += c.total ?? 0;
+    existing.months.push(`${getMonthName(c.month)} ${c.year}`);
+    arrearsByStudent.set(c.student_id, existing);
+  }
 
   const challans = ((students ?? []) as unknown as {
     id: string;
@@ -66,6 +84,10 @@ export async function generateMonthlyFees(month: number, year: number) {
   }[]).map((student) => {
     const tuitionFee = student.grade?.monthly_fee ?? 0;
     const discount = computeDiscount(tuitionFee, student.scholarship_type, student.custom_discount_pkr ?? 0);
+
+    const arrearsInfo = arrearsByStudent.get(student.id);
+    const arrearsAmount = arrearsInfo?.amount ?? 0;
+    const arrearsMonths = arrearsInfo?.months ?? [];
 
     const challan = {
       student_id: student.id,
@@ -78,7 +100,7 @@ export async function generateMonthlyFees(month: number, year: number) {
       admission_fee: 0,
       mcs_fee: 0,
       late_fee: 0,
-      arrears: 0,
+      arrears: arrearsAmount,
       discount,
       total: 0,
       is_paid: false,
@@ -95,7 +117,7 @@ export async function generateMonthlyFees(month: number, year: number) {
   if (error) throw error;
   revalidatePath("/fees");
   revalidatePath("/dashboard");
-  await logAction("Fees", "Generated monthly fees", `${getMonthName(month)} ${year} · ${challans.length} challans`);
+  await logAction("Fees", "Generated monthly fees", `${getMonthName(month)} ${year} \u00b7 ${challans.length} challans`);
   return challans.length;
 }
 
@@ -117,9 +139,22 @@ export async function createChallan(values: {
   const dueDate = getDueDate(values.month, values.year);
   const discount = computeDiscount(values.tuition_fee, values.scholarship_type, values.custom_discount_pkr ?? 0);
 
+  const studentIds = [values.student_id];
+  const { data: unpaidChallans } = await admin
+    .from("fee_challans")
+    .select("student_id, month, year, total, is_paid")
+    .in("student_id", studentIds)
+    .eq("is_paid", false)
+    .or(`year.lt.${values.year},and(year.eq.${values.year},month.lt.${values.month})`);
+
+  let arrearsAmount = values.arrears ?? 0;
+  for (const c of (unpaidChallans ?? [])) {
+    arrearsAmount += c.total ?? 0;
+  }
+
   const challan = {
     ...values,
-    arrears: values.arrears ?? 0,
+    arrears: arrearsAmount,
     late_fee: 0,
     discount,
     due_date: dueDate.toISOString().split("T")[0],
@@ -144,7 +179,6 @@ export async function updateChallan(
     security_fee: number;
     admission_fee: number;
     mcs_fee: number;
-    late_fee: number;
     arrears: number;
   }>
 ) {
@@ -250,74 +284,5 @@ export async function getDashboardStats(month: number, year: number) {
   };
 }
 
-// Apply late fees to overdue challans
-export async function applyLateFees(): Promise<{ updated: number; lateFeeAmount: number }> {
-  await requireUser();
-  const admin = createAdminClient();
-
-  // Get late fee amount from settings
-  const { data: setting } = await admin
-    .from("settings")
-    .select("value")
-    .eq("key", "late_fee_amount")
-    .maybeSingle();
-  
-  const lateFeeAmount = Number(setting?.value ?? 200);
-
-  // Get current date
-  const today = new Date();
-  const currentMonth = today.getMonth() + 1;
-  const currentYear = today.getFullYear();
-
-  // Find unpaid challans past the late fee deadline (15th of the month)
-  // Late fee applies after the 15th, for current and previous months
-  const { data: overdueChallans, error } = await admin
-    .from("fee_challans")
-    .select("id, month, year, late_fee, total, tuition_fee, stationary_fee, security_fee, admission_fee, mcs_fee, arrears, discount")
-    .eq("is_paid", false)
-    .lt("late_fee", lateFeeAmount) // Only those without full late fee applied
-    .or(`year.lt.${currentYear},and(year.eq.${currentYear},month.lt.${currentMonth})`);
-
-  if (error) throw error;
-
-  let updated = 0;
-  
-  for (const challan of (overdueChallans ?? [])) {
-    // Check if this challan is past the late fee deadline (15th of its month)
-    const lateFeeDeadline = new Date(challan.year, challan.month - 1, 15);
-    if (today <= lateFeeDeadline) continue; // Not yet past deadline
-
-    const newLateFee = lateFeeAmount;
-    const newTotal = 
-      (challan.tuition_fee ?? 0) +
-      (challan.stationary_fee ?? 0) +
-      (challan.security_fee ?? 0) +
-      (challan.admission_fee ?? 0) +
-      (challan.mcs_fee ?? 0) +
-      newLateFee +
-      (challan.arrears ?? 0) -
-      (challan.discount ?? 0);
-
-    const { error: updateError } = await admin
-      .from("fee_challans")
-      .update({ 
-        late_fee: newLateFee,
-        total: Math.max(0, newTotal)
-      } as never)
-      .eq("id", challan.id);
-
-    if (updateError) {
-      console.error(`Failed to update challan ${challan.id}:`, updateError);
-      continue;
-    }
-    updated++;
-  }
-
-  if (updated > 0) {
-    revalidatePath("/fees");
-    revalidatePath("/dashboard");
-    await logAction("Fees", "Applied late fees", `Applied Rs ${lateFeeAmount} to ${updated} challan(s)`);
-  }
-
-  return { updated, lateFeeAmount };
-}
+// Late fee is now a status indicator only (applied when challan generated after 10th of month)
+// No automatic late fee amount is added to challans

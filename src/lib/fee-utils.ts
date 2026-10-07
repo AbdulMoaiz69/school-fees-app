@@ -18,19 +18,18 @@ export function getDueDate(month: number, year: number): Date {
 }
 
 export function getLateFeeDeadline(month: number, year: number): Date {
-  return new Date(year, month - 1, 15);
+  return new Date(year, month - 1, 10);
 }
 
-export function getChallanStatus(challan: FeeChallan): "paid" | "unpaid" | "overdue" | "late_fee" | "arrears" {
+export function getChallanStatus(challan: FeeChallan): "paid" | "unpaid" | "late_fee" | "arrears" {
   if (challan.is_paid) return "paid";
   const today = new Date();
-  const due = new Date(challan.due_date);
+  const generatedAt = new Date(challan.generated_at);
   const lateFeeDeadline = getLateFeeDeadline(challan.month, challan.year);
   const nextMonthStart = new Date(challan.year, challan.month, 1);
 
   if (today >= nextMonthStart) return "arrears";
-  if (today > lateFeeDeadline) return "arrears";
-  if (today > due) return "late_fee";
+  if (generatedAt > lateFeeDeadline) return "late_fee";
   return "unpaid";
 }
 
@@ -81,7 +80,6 @@ export function getStatusBadgeVariant(status: ReturnType<typeof getChallanStatus
     case "unpaid": return "secondary" as const;
     case "late_fee": return "outline" as const;
     case "arrears": return "destructive" as const;
-    case "overdue": return "destructive" as const;
   }
 }
 
@@ -89,9 +87,8 @@ export function getStatusLabel(status: ReturnType<typeof getChallanStatus>) {
   switch (status) {
     case "paid": return "Paid";
     case "unpaid": return "Unpaid";
-    case "late_fee": return "Late Fee Applied";
+    case "late_fee": return "Late Fee";
     case "arrears": return "Arrears";
-    case "overdue": return "Overdue";
   }
 }
 

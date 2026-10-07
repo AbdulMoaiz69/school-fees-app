@@ -21,10 +21,10 @@ export function PrintableChallan({ challan, settings }: PrintableChallanProps) {
   const schoolPhone = settings.school_phone ?? "";
   const schoolLogo = settings.school_logo ?? "";
   const student = challan.student;
-  const monthYear = `${getMonthName(challan.month)} ${challan.year}`;
+  const currentMonthYear = `${getMonthName(challan.month)} ${challan.year}`;
 
   const feeRows = [
-    { label: "Tuition Fee", amount: challan.tuition_fee },
+    { label: `Tuition Fee (${currentMonthYear})`, amount: challan.tuition_fee },
     ...(challan.stationary_fee > 0
       ? [{ label: "Stationary", amount: challan.stationary_fee }]
       : []),
@@ -38,10 +38,7 @@ export function PrintableChallan({ challan, settings }: PrintableChallanProps) {
       ? [{ label: "MCS", amount: challan.mcs_fee }]
       : []),
     ...(challan.arrears > 0
-      ? [{ label: "Arrears", amount: challan.arrears }]
-      : []),
-    ...(challan.late_fee > 0
-      ? [{ label: "Late Fee", amount: challan.late_fee }]
+      ? [{ label: "Arrears (Previous Months)", amount: challan.arrears }]
       : []),
   ];
 
@@ -64,7 +61,7 @@ export function PrintableChallan({ challan, settings }: PrintableChallanProps) {
           <h2 className="text-xl font-bold">{schoolName}</h2>
           {schoolAddress && <p className="text-sm text-muted-foreground">{schoolAddress}</p>}
           {schoolPhone && <p className="text-sm text-muted-foreground">{schoolPhone}</p>}
-          <p className="text-sm font-semibold mt-2">FEE CHALLAN — {monthYear}</p>
+          <p className="text-sm font-semibold mt-2">FEE CHALLAN — {currentMonthYear}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4 text-sm">
@@ -183,7 +180,7 @@ export function PrintableChallan({ challan, settings }: PrintableChallanProps) {
                 {schoolAddress && <p style={{ margin: "0.5mm 0 0", fontSize: "8pt", color: "#555" }}>{schoolAddress}</p>}
                 {schoolPhone && <p style={{ margin: "0.5mm 0 0", fontSize: "8pt", color: "#555" }}>Tel: {schoolPhone}</p>}
                 <p style={{ margin: "1.5mm 0 0", fontSize: "10pt", fontWeight: "bold" }}>
-                  FEE CHALLAN — {monthYear.toUpperCase()}
+                  FEE CHALLAN — {currentMonthYear.toUpperCase()}
                 </p>
               </div>
 

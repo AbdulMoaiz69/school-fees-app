@@ -25,7 +25,6 @@ const STATUS_CLS: Record<string, string> = {
   unpaid: "bg-amber-50 text-amber-700 border-amber-200",
   late_fee: "bg-orange-50 text-orange-700 border-orange-200",
   arrears: "bg-red-50 text-red-700 border-red-200",
-  overdue: "bg-red-50 text-red-700 border-red-200",
 };
 
 const YEARS = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
