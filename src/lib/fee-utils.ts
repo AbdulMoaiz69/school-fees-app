@@ -14,7 +14,7 @@ export function formatCurrency(amount: number) {
 }
 
 export function getDueDate(month: number, year: number): Date {
-  return new Date(year, month - 1, 8);
+  return new Date(year, month - 1, 10);
 }
 
 export function getLateFeeDeadline(month: number, year: number): Date {

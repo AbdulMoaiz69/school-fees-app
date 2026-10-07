@@ -34,6 +34,7 @@ const FEE_FIELDS: [keyof EditForm, string][] = [
   ["admission_fee", "Admission Fee"],
   ["mcs_fee", "MCS"],
   ["arrears", "Arrears"],
+  ["late_fee", "Fine"],
 ];
 
 type EditForm = {
@@ -42,6 +43,7 @@ type EditForm = {
   admission_fee: string;
   mcs_fee: string;
   arrears: string;
+  late_fee: string;
 };
 
 export function ChallanDetailClient({ challan, settings }: Props) {
@@ -57,6 +59,7 @@ export function ChallanDetailClient({ challan, settings }: Props) {
     admission_fee: challan.admission_fee.toString(),
     mcs_fee: challan.mcs_fee.toString(),
     arrears: challan.arrears.toString(),
+    late_fee: challan.late_fee.toString(),
   });
 
   const status = getChallanStatus(challan);
