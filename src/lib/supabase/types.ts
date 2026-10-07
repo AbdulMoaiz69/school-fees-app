@@ -53,6 +53,7 @@ export type FeeChallan = {
   admission_fee: number;
   mcs_fee: number;
   late_fee: number;
+  late_fee_note: string | null;
   arrears: number;
   discount: number;
   total: number;

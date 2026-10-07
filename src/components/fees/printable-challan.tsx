@@ -40,6 +40,14 @@ export function PrintableChallan({ challan, settings }: PrintableChallanProps) {
     ...(challan.arrears > 0
       ? [{ label: "Arrears (Previous Months)", amount: challan.arrears }]
       : []),
+    ...(challan.late_fee > 0
+      ? [{ 
+          label: challan.late_fee_note 
+            ? `Fine (${challan.late_fee_note})` 
+            : "Fine", 
+          amount: challan.late_fee 
+        }]
+      : []),
   ];
 
   const discount = challan.discount;

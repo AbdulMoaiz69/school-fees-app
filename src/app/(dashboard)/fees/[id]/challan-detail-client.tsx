@@ -44,6 +44,7 @@ type EditForm = {
   mcs_fee: string;
   arrears: string;
   late_fee: string;
+  late_fee_note: string;
 };
 
 export function ChallanDetailClient({ challan, settings }: Props) {
@@ -60,6 +61,7 @@ export function ChallanDetailClient({ challan, settings }: Props) {
     mcs_fee: challan.mcs_fee.toString(),
     arrears: challan.arrears.toString(),
     late_fee: challan.late_fee.toString(),
+    late_fee_note: challan.late_fee_note ?? "",
   });
 
   const status = getChallanStatus(challan);
@@ -89,9 +91,14 @@ export function ChallanDetailClient({ challan, settings }: Props) {
   async function handleSaveEdit() {
     startTransition(async () => {
       try {
-        await updateChallan(challan.id, Object.fromEntries(
+        const numericUpdates = Object.fromEntries(
           FEE_FIELDS.map(([k]) => [k, parseFloat(editForm[k]) || 0])
-        ) as Parameters<typeof updateChallan>[1]);
+        ) as Record<string, number>;
+        const updates = {
+          ...numericUpdates,
+          late_fee_note: editForm.late_fee_note || null,
+        };
+        await updateChallan(challan.id, updates as Parameters<typeof updateChallan>[1]);
         toast.success("Challan updated");
         setShowEditDialog(false);
         router.refresh();
@@ -184,6 +191,18 @@ export function ChallanDetailClient({ challan, settings }: Props) {
                 />
               </div>
             ))}
+            {parseFloat(editForm.late_fee) > 0 && (
+              <div className="space-y-1.5">
+                <Label htmlFor="late_fee_note">Fine Note <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Textarea
+                  id="late_fee_note"
+                  placeholder="Reason for fine (e.g. Late payment, Library fine...)"
+                  rows={2}
+                  value={editForm.late_fee_note}
+                  onChange={(e) => setEditForm((p) => ({ ...p, late_fee_note: e.target.value }))}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>Cancel</Button>

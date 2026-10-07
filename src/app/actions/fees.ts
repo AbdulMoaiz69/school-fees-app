@@ -180,6 +180,8 @@ export async function updateChallan(
     admission_fee: number;
     mcs_fee: number;
     arrears: number;
+    late_fee: number;
+    late_fee_note: string | null;
   }>
 ) {
   await requireUser();
