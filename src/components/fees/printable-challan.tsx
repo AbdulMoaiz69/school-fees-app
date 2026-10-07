@@ -12,7 +12,6 @@ interface PrintableChallanProps {
 }
 
 export function PrintableChallan({ challan, settings }: PrintableChallanProps) {
-  // Portal target only exists after mount (avoids SSR mismatch)
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
@@ -41,11 +40,11 @@ export function PrintableChallan({ challan, settings }: PrintableChallanProps) {
       ? [{ label: "Arrears (Previous Months)", amount: challan.arrears }]
       : []),
     ...(challan.late_fee > 0
-      ? [{ 
-          label: challan.late_fee_note 
-            ? `Fine (${challan.late_fee_note})` 
-            : "Fine", 
-          amount: challan.late_fee 
+      ? [{
+          label: challan.late_fee_note
+            ? `Fine (${challan.late_fee_note})`
+            : "Fine",
+          amount: challan.late_fee
         }]
       : []),
   ];
@@ -144,149 +143,213 @@ export function PrintableChallan({ challan, settings }: PrintableChallanProps) {
         )}
       </div>
 
-      {/* Printable Area (A4) — portaled to <body> so it isn't hidden by the app shell on print */}
+      {/* Printable Area (A4) — portaled to <body> */}
       {mounted && createPortal(
         <div className="print-root">
-        <div style={{ width: "100%", fontFamily: "Arial, sans-serif", fontSize: "11pt", boxSizing: "border-box", color: "#000", background: "#fff" }}>
-          {/* Two copies on one A4 — Office Copy (top) + Student Copy (bottom), cut along the dashed line */}
-          {(["Office Copy", "Student Copy"] as const).map((copyLabel, idx) => (
-            <Fragment key={copyLabel}>
-              {idx === 1 && (
-                <div style={{ textAlign: "center", fontSize: "7pt", color: "#999", borderTop: "1px dashed #aaa", margin: "4mm 0", paddingTop: "1mm", letterSpacing: "0.1em" }}>
-                  ✂ cut here
-                </div>
-              )}
-              <div
-                style={{
-                  border: "1px solid #ccc",
-                  padding: "5mm",
-                  position: "relative",
-                  breakInside: "avoid",
-                  pageBreakInside: "avoid",
-                }}
-              >
-              {/* Copy label */}
-              <div
-                style={{
-                  position: "absolute",
-                  top: "3mm",
-                  right: "4mm",
-                  fontSize: "8pt",
-                  color: "#888",
-                  border: "1px solid #ccc",
-                  padding: "0.5mm 2.5mm",
-                  borderRadius: "2mm",
-                }}
-              >
-                {copyLabel}
-              </div>
-
-              {/* School Header */}
-              <div style={{ textAlign: "center", borderBottom: "2px solid #000", paddingBottom: "2mm", marginBottom: "3mm" }}>
-                {schoolLogo && <img src={schoolLogo} alt="School Logo" style={{ height: "70px", width: "auto", marginBottom: "2mm" }} />}
-                <h2 style={{ margin: 0, fontSize: "13pt", fontWeight: "bold" }}>{schoolName}</h2>
-                {schoolAddress && <p style={{ margin: "0.5mm 0 0", fontSize: "8pt", color: "#555" }}>{schoolAddress}</p>}
-                {schoolPhone && <p style={{ margin: "0.5mm 0 0", fontSize: "8pt", color: "#555" }}>Tel: {schoolPhone}</p>}
-                <p style={{ margin: "1.5mm 0 0", fontSize: "10pt", fontWeight: "bold" }}>
-                  FEE CHALLAN — {currentMonthYear.toUpperCase()}
-                </p>
-              </div>
-
-              {/* Student Info Grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2mm 4mm", marginBottom: "3mm" }}>
-                <InfoCell label="Student Name" value={student?.full_name ?? ""} />
-                <InfoCell label="Registration No." value={student?.registration_number ?? ""} mono />
-                <InfoCell label="Class / Grade" value={student?.grade?.name ?? ""} />
-                <InfoCell
-                  label="Due Date"
-                  value={new Date(challan.due_date).toLocaleDateString("en-PK", {
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
-                  })}
-                />
-                {student?.parent_name && (
-                  <InfoCell label="Parent Name" value={student.parent_name} />
-                )}
-                {student?.parent_phone && (
-                  <InfoCell label="Contact" value={student.parent_phone} />
-                )}
-              </div>
-
-              {/* Fee Table */}
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "9.5pt" }}>
-                <thead>
-                  <tr style={{ borderBottom: "1.5px solid #000" }}>
-                    <th style={{ textAlign: "left", padding: "1mm 2mm", fontWeight: "bold" }}>Description</th>
-                    <th style={{ textAlign: "right", padding: "1mm 2mm", fontWeight: "bold" }}>Amount (Rs)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {feeRows.map((row, i) => (
-                    <tr key={row.label} style={{ borderBottom: "0.5px solid #e0e0e0", background: i % 2 === 0 ? "#fafafa" : "#fff" }}>
-                      <td style={{ padding: "1mm 2mm" }}>{row.label}</td>
-                      <td style={{ textAlign: "right", padding: "1mm 2mm" }}>
-                        {row.amount.toLocaleString("en-PK")}
-                      </td>
-                    </tr>
-                  ))}
-                  {discount > 0 && (
-                    <tr style={{ color: "#16a34a" }}>
-                      <td style={{ padding: "1mm 2mm" }}>{scholarshipLabel ?? "Discount"}</td>
-                      <td style={{ textAlign: "right", padding: "1mm 2mm" }}>
-                        - {discount.toLocaleString("en-PK")}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-                <tfoot>
-                  <tr style={{ borderTop: "2px solid #000", fontWeight: "bold" }}>
-                    <td style={{ padding: "1.5mm 2mm" }}>TOTAL</td>
-                    <td style={{ textAlign: "right", padding: "1.5mm 2mm", fontSize: "11pt" }}>
-                      Rs {challan.total.toLocaleString("en-PK")}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-
-              {/* Footer row */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "3mm", marginTop: "3mm", paddingTop: "2mm", borderTop: "0.5px solid #ccc" }}>
-                <div>
-                  <p style={{ fontSize: "7.5pt", color: "#888", margin: 0 }}>Cashier Signature</p>
-                  <div style={{ marginTop: "3mm", borderBottom: "1px solid #000", width: "100%" }} />
-                </div>
-                <div>
-                  <p style={{ fontSize: "7.5pt", color: "#888", margin: 0 }}>Date Paid</p>
-                  <div style={{ marginTop: "3mm", borderBottom: "1px solid #000", width: "100%" }} />
-                </div>
-                <div>
-                  <p style={{ fontSize: "7.5pt", color: "#888", margin: 0 }}>Stamp</p>
-                  <div style={{ marginTop: "2mm", height: "7mm", border: "1px dashed #ccc" }} />
-                </div>
-              </div>
-
-              {challan.is_paid && (
+          <style jsx>{`
+            @page {
+              size: A4;
+              margin: 0;
+            }
+            @media print {
+              .print-root {
+                width: 210mm;
+                height: 297mm;
+              }
+            }
+          `}</style>
+          <div style={{
+            width: "210mm",
+            height: "297mm",
+            fontFamily: "Arial, sans-serif",
+            fontSize: "9pt",
+            boxSizing: "border-box",
+            color: "#000",
+            background: "#fff",
+            position: "relative",
+            overflow: "hidden"
+          }}>
+            {/* Two copies on one A4 — Office Copy (top half) + Student Copy (bottom half) */}
+            {(["Office Copy", "Student Copy"] as const).map((copyLabel, idx) => (
+              <Fragment key={copyLabel}>
                 <div
                   style={{
-                    position: "absolute",
-                    top: "35%",
-                    left: "32%",
-                    transform: "rotate(-20deg)",
-                    opacity: 0.15,
-                    fontSize: "40pt",
-                    fontWeight: "bold",
-                    color: "#16a34a",
-                    pointerEvents: "none",
-                    userSelect: "none",
+                    width: "100%",
+                    height: "148.5mm",
+                    boxSizing: "border-box",
+                    border: "1px solid #ccc",
+                    padding: "3mm 4mm",
+                    position: "relative",
+                    display: "flex",
+                    flexDirection: "column",
                   }}
                 >
-                  PAID
+                  {/* Cut line divider */}
+                  {idx === 1 && (
+                    <div style={{
+                      position: "absolute",
+                      top: "-1px",
+                      left: "0",
+                      right: "0",
+                      borderTop: "1px dashed #999",
+                      textAlign: "center",
+                      fontSize: "6pt",
+                      color: "#999",
+                      letterSpacing: "0.1em",
+                      paddingTop: "0.5mm"
+                    }}>
+                      ✂ ✂ ✂ Cut Here ✂ ✂ ✂
+                    </div>
+                  )}
+
+                  {/* Copy label */}
+                  <div style={{
+                    position: "absolute",
+                    top: "2mm",
+                    right: "3mm",
+                    fontSize: "7pt",
+                    color: "#888",
+                    border: "1px solid #ccc",
+                    padding: "0.3mm 2mm",
+                    borderRadius: "1.5mm",
+                    background: "#fafafa"
+                  }}>
+                    {copyLabel}
+                  </div>
+
+                  {/* School Header */}
+                  <div style={{
+                    textAlign: "center",
+                    borderBottom: "1.5px solid #000",
+                    paddingBottom: "1.5mm",
+                    marginBottom: "2mm",
+                    flexShrink: 0
+                  }}>
+                    {schoolLogo && <img src={schoolLogo} alt="School Logo" style={{ height: "55px", width: "auto", marginBottom: "1.5mm" }} />}
+                    <h2 style={{ margin: 0, fontSize: "11pt", fontWeight: "bold", lineHeight: 1.2 }}>{schoolName}</h2>
+                    {schoolAddress && <p style={{ margin: "0.3mm 0 0", fontSize: "7pt", color: "#555", lineHeight: 1.2 }}>{schoolAddress}</p>}
+                    {schoolPhone && <p style={{ margin: "0.3mm 0 0", fontSize: "7pt", color: "#555" }}>Tel: {schoolPhone}</p>}
+                    <p style={{ margin: "1mm 0 0", fontSize: "9pt", fontWeight: "bold", textTransform: "uppercase" }}>
+                      FEE CHALLAN — {currentMonthYear.toUpperCase()}
+                    </p>
+                  </div>
+
+                  {/* Student Info Grid */}
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "1.5mm 3mm",
+                    marginBottom: "2mm",
+                    fontSize: "8pt",
+                    flexShrink: 0
+                  }}>
+                    <InfoCell label="Student Name" value={student?.full_name ?? ""} />
+                    <InfoCell label="Registration No." value={student?.registration_number ?? ""} mono />
+                    <InfoCell label="Class / Grade" value={student?.grade?.name ?? ""} />
+                    <InfoCell
+                      label="Due Date"
+                      value={new Date(challan.due_date).toLocaleDateString("en-PK", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    />
+                    {student?.parent_name && (
+                      <InfoCell label="Parent Name" value={student.parent_name} />
+                    )}
+                    {student?.parent_phone && (
+                      <InfoCell label="Contact" value={student.parent_phone} />
+                    )}
+                  </div>
+
+                  {/* Fee Table */}
+                  <table style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    fontSize: "8.5pt",
+                    flex: "1 1 auto",
+                    minHeight: 0
+                  }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid #000" }}>
+                        <th style={{ textAlign: "left", padding: "0.8mm 1.5mm", fontWeight: "bold", fontSize: "8pt" }}>Description</th>
+                        <th style={{ textAlign: "right", padding: "0.8mm 1.5mm", fontWeight: "bold", fontSize: "8pt" }}>Amount (Rs)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {feeRows.map((row, i) => (
+                        <tr key={row.label} style={{ borderBottom: "0.5px solid #e0e0e0", background: i % 2 === 0 ? "#fafafa" : "#fff" }}>
+                          <td style={{ padding: "0.8mm 1.5mm", fontSize: "8.5pt" }}>{row.label}</td>
+                          <td style={{ textAlign: "right", padding: "0.8mm 1.5mm", fontSize: "8.5pt" }}>
+                            {row.amount.toLocaleString("en-PK")}
+                          </td>
+                        </tr>
+                      ))}
+                      {discount > 0 && (
+                        <tr style={{ color: "#16a34a" }}>
+                          <td style={{ padding: "0.8mm 1.5mm", fontSize: "8.5pt" }}>{scholarshipLabel ?? "Discount"}</td>
+                          <td style={{ textAlign: "right", padding: "0.8mm 1.5mm", fontSize: "8.5pt" }}>
+                            - {discount.toLocaleString("en-PK")}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                    <tfoot>
+                      <tr style={{ borderTop: "1.5px solid #000", fontWeight: "bold" }}>
+                        <td style={{ padding: "1.2mm 1.5mm", fontSize: "9pt" }}>TOTAL</td>
+                        <td style={{ textAlign: "right", padding: "1.2mm 1.5mm", fontSize: "10pt" }}>
+                          Rs {challan.total.toLocaleString("en-PK")}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+
+                  {/* Footer row */}
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr 1fr",
+                    gap: "2mm",
+                    marginTop: "2mm",
+                    paddingTop: "1.5mm",
+                    borderTop: "0.5px solid #ccc",
+                    fontSize: "6.5pt",
+                    flexShrink: 0
+                  }}>
+                    <div>
+                      <p style={{ margin: 0, color: "#888" }}>Cashier Signature</p>
+                      <div style={{ marginTop: "2mm", borderBottom: "1px solid #000", width: "100%" }} />
+                    </div>
+                    <div>
+                      <p style={{ margin: 0, color: "#888" }}>Date Paid</p>
+                      <div style={{ marginTop: "2mm", borderBottom: "1px solid #000", width: "100%" }} />
+                    </div>
+                    <div>
+                      <p style={{ margin: 0, color: "#888" }}>Stamp</p>
+                      <div style={{ marginTop: "1.5mm", height: "5mm", border: "1px dashed #ccc" }} />
+                    </div>
+                  </div>
+
+                  {challan.is_paid && (
+                    <div style={{
+                      position: "absolute",
+                      top: "35%",
+                      left: "30%",
+                      transform: "rotate(-20deg)",
+                      opacity: 0.12,
+                      fontSize: "32pt",
+                      fontWeight: "bold",
+                      color: "#16a34a",
+                      pointerEvents: "none",
+                      userSelect: "none",
+                      whiteSpace: "nowrap"
+                    }}>
+                      PAID
+                    </div>
+                  )}
                 </div>
-              )}
-              </div>
-            </Fragment>
-          ))}
-        </div>
+              </Fragment>
+            ))}
+          </div>
         </div>,
         document.body
       )}
@@ -297,8 +360,8 @@ export function PrintableChallan({ challan, settings }: PrintableChallanProps) {
 function InfoCell({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
     <div>
-      <p style={{ margin: 0, fontSize: "8pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</p>
-      <p style={{ margin: "0.5mm 0 0", fontWeight: "600", fontFamily: mono ? "monospace" : "inherit" }}>{value}</p>
+      <p style={{ margin: 0, fontSize: "6.5pt", color: "#888", textTransform: "uppercase", letterSpacing: "0.05em", lineHeight: 1.2 }}>{label}</p>
+      <p style={{ margin: "0.3mm 0 0", fontWeight: "600", fontFamily: mono ? "monospace" : "inherit", fontSize: "8pt", lineHeight: 1.2 }}>{value}</p>
     </div>
   );
 }
