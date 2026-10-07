@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { UserRole } from "@/lib/supabase/types";
 import type { PublicUser } from "@/app/actions/users";
-import { createUser, updateUserRole, setUserActive, resetUserPin } from "@/app/actions/users";
+import { createUser, updateUserRole, setUserActive, resetUserPin, updateUserName } from "@/app/actions/users";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +35,8 @@ export function UsersClient({ users, meId }: { users: PublicUser[]; meId: string
   const [form, setForm] = useState({ name: "", username: "", role: "staff" as UserRole, pin: "" });
   const [resetFor, setResetFor] = useState<PublicUser | null>(null);
   const [newPin, setNewPin] = useState("");
+  const [editNameFor, setEditNameFor] = useState<PublicUser | null>(null);
+  const [editName, setEditName] = useState("");
 
   function run(fn: () => Promise<unknown>, msg: string, after?: () => void) {
     startTransition(async () => {
@@ -93,6 +95,9 @@ export function UsersClient({ users, meId }: { users: PublicUser[]; meId: string
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-1.5">
+                    <Button variant="ghost" size="sm" className="h-7" onClick={() => { setEditName(u.name); setEditNameFor(u); }}>
+                      <svg className="h-3.5 w-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    </Button>
                     <Button variant="ghost" size="sm" className="h-7" onClick={() => { setNewPin(""); setResetFor(u); }}>
                       <KeyRound className="h-3.5 w-3.5 mr-1" /> PIN
                     </Button>
@@ -162,6 +167,23 @@ export function UsersClient({ users, meId }: { users: PublicUser[]; meId: string
             <Button variant="outline" onClick={() => setResetFor(null)}>Cancel</Button>
             <Button disabled={isPending} onClick={() => { const id = resetFor!.id; run(() => resetUserPin(id, newPin), "PIN reset", () => setResetFor(null)); }}>
               {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Reset PIN
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Name */}
+      <Dialog open={editNameFor !== null} onOpenChange={(o) => { if (!o) setEditNameFor(null); }}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader><DialogTitle>Edit Name — {editNameFor?.username}</DialogTitle></DialogHeader>
+          <div className="space-y-1.5 py-1">
+            <Label htmlFor="edit_name">Full Name</Label>
+            <Input id="edit_name" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="e.g. Sara Ali" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditNameFor(null)}>Cancel</Button>
+            <Button disabled={isPending} onClick={() => { const id = editNameFor!.id; const name = editName; run(() => updateUserName(id, name), "Name updated", () => setEditNameFor(null)); }}>
+              {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}Save
             </Button>
           </DialogFooter>
         </DialogContent>

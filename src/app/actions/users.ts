@@ -80,3 +80,13 @@ export async function resetUserPin(id: string, pin: string) {
   revalidatePath("/users");
   await logAction("Users", "Reset a user's PIN");
 }
+
+export async function updateUserName(id: string, name: string) {
+  await requireAdmin();
+  if (!name.trim()) throw new Error("Name is required.");
+  const admin = createAdminClient();
+  const { error } = await admin.from("app_users").update({ name: name.trim() } as never).eq("id", id);
+  if (error) throw error;
+  revalidatePath("/users");
+  await logAction("Users", "Updated user name", `→ ${name.trim()}`);
+}
