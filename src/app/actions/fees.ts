@@ -244,7 +244,7 @@ export async function markChallanUnpaid(id: string) {
 export async function getDashboardStats(month: number, year: number) {
   const supabase = await createClient();
 
-  const [studentsRes, challansRes, scholarshipsRes] = await Promise.all([
+  const [studentsRes, challansRes, scholarshipsRes, activeStudentsRes] = await Promise.all([
     supabase.from("students").select("id", { count: "exact" }).eq("is_active", true),
     supabase
       .from("fee_challans")
@@ -256,19 +256,38 @@ export async function getDashboardStats(month: number, year: number) {
       .select("scholarship_type")
       .eq("is_active", true)
       .neq("scholarship_type", "none"),
+    supabase
+      .from("students")
+      .select("id, scholarship_type, custom_discount_pkr, grade:grades!students_grade_id_fkey(monthly_fee)")
+      .eq("is_active", true),
   ]);
 
   const totalStudents = studentsRes.count ?? 0;
   const challans = ((challansRes.data ?? []) as unknown as { is_paid: boolean; total: number }[]);
   const scholarships = ((scholarshipsRes.data ?? []) as unknown as { scholarship_type: string }[]);
+  const activeStudents = (activeStudentsRes.data ?? []) as unknown as {
+    id: string;
+    scholarship_type: string;
+    custom_discount_pkr: number;
+    grade: { monthly_fee: number } | null;
+  }[];
+
+  const { computeDiscount } = await import("@/lib/fee-utils");
 
   const paidChallans = challans.filter((c) => c.is_paid);
   const totalCollected = paidChallans.reduce((sum, c) => sum + (c.total ?? 0), 0);
   const totalExpected = challans.reduce((sum, c) => sum + (c.total ?? 0), 0);
+
   const fullScholarships = scholarships.filter((s) => s.scholarship_type === "full").length;
   const halfScholarships = scholarships.filter((s) => s.scholarship_type === "half").length;
   const customScholarships = scholarships.filter((s) => s.scholarship_type === "custom").length;
   const siblingScholarships = scholarships.filter((s) => s.scholarship_type === "sibling").length;
+
+  const predictedCollection = activeStudents.reduce((sum, student) => {
+    const tuitionFee = student.grade?.monthly_fee ?? 0;
+    const discount = computeDiscount(tuitionFee, student.scholarship_type as any, student.custom_discount_pkr ?? 0);
+    return sum + (tuitionFee - discount);
+  }, 0);
 
   return {
     totalStudents,
@@ -277,6 +296,7 @@ export async function getDashboardStats(month: number, year: number) {
     unpaidCount: challans.length - paidChallans.length,
     totalCollected,
     totalExpected,
+    predictedCollection,
     fullScholarships,
     halfScholarships,
     customScholarships,

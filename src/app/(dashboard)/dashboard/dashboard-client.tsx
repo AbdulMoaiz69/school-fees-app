@@ -19,6 +19,7 @@ interface DashboardClientProps {
     unpaidCount: number;
     totalCollected: number;
     totalExpected: number;
+    predictedCollection: number;
     fullScholarships: number;
     halfScholarships: number;
   };
@@ -51,13 +52,19 @@ export function DashboardClient({ stats, settings, treasury, month, year }: Dash
       </div>
 
       {/* Top row — key numbers */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <StatCard title="Total Students" value={stats.totalStudents} icon={Users} color="blue" href="/students" />
         <StatCard
           title="Fees Collected"
           value={formatCurrency(stats.totalCollected)}
           sub={`of ${formatCurrency(stats.totalExpected)}`}
           icon={Banknote} color="green"
+        />
+        <StatCard
+          title="Predicted Collection"
+          value={formatCurrency(stats.predictedCollection)}
+          sub="if all students pay"
+          icon={TrendingUp} color="blue"
         />
         <StatCard
           title="Paid Challans"
