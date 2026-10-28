@@ -281,14 +281,6 @@ export function ClassListDownloadButton({ grade }: ClassListDownloadButtonProps)
     <span>Class: <b>${grade.name}</b> &nbsp;|&nbsp; Monthly Fee: <b>Rs ${Number(grade.monthly_fee).toLocaleString("en-PK")}</b></span>
   </div>
 
-  <div class="summary">
-    <span>Total Students: <b>${students.length}</b></span>
-    <span>Scholarship Students: <b>${students.filter((s) => s.scholarship_type !== "none").length}</b></span>
-    <span>Full Scholarship: <b>${students.filter((s) => s.scholarship_type === "full").length}</b></span>
-    <span>Half Scholarship: <b>${students.filter((s) => s.scholarship_type === "half").length}</b></span>
-    <span>Sibling Discount: <b>${students.filter((s) => s.scholarship_type === "sibling").length}</b></span>
-  </div>
-
   <table>
     <thead>
       <tr>
